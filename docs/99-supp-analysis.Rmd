@@ -1,0 +1,1376 @@
+---
+title: "Supplementary Analyses"
+author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-99, include=FALSE}
+library(sigminer)
+library(ggplot2)
+library(ggpubr)
+
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+In this part, we will add some supplementary analyses.
+
+## CNS validation
+
+### TCGA CNS
+
+TCGA has ~10, 000 tumors and we can obtain allele specific copy number data from GDC portal, so it is the good resource to validate the CNS discovered in PCAWG.
+
+Call signatures.
+
+`PBS` file content:
+
+```
+#PBS -l walltime=1000:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -S /bin/bash
+#PBS -l mem=100gb
+#PBS -j oe
+#PBS -M w_shixiang@163.com
+#PBS -q pub_fast
+
+# Please set PBS arguments above
+cd /public/home/wangshx/wangshx/PCAWG-TCGA
+module load apps/R/3.6.1
+
+echo Extracting TCGA signatures...
+
+# Following are commands/scripts you want to run
+# If you do not know how to set this, please check README.md file 
+Rscript call_tcga.R
+```
+
+R script content:
+
+```r
+library(sigminer)
+
+tally_X <- readRDS("tcga_cn_tally_X.rds")
+
+sigprofiler_extract(tally_X$nmf_matrix, 
+                    output = "TCGA_CN176X", 
+                    range = 2:30, 
+                    nrun = 100,
+                    cores = 36,
+                    init_method = "random",
+                    is_exome = FALSE,
+                    use_conda = TRUE)
+```
+
+Metadata:
+
+```
+THIS FILE CONTAINS THE METADATA ABOUT SYSTEM AND RUNTIME
+
+
+-------System Info-------
+Operating System Name: Linux
+Nodename: node34
+Release: 3.10.0-693.el7.x86_64
+Version: #1 SMP Tue Aug 22 21:09:27 UTC 2017
+
+-------Python and Package Versions------- 
+Python Version: 3.8.5
+Sigproextractor Version: 1.0.17
+SigprofilerPlotting Version: 1.1.8
+SigprofilerMatrixGenerator Version: 1.1.20
+Pandas version: 1.1.2
+Numpy version: 1.19.2
+Scipy version: 1.5.2
+Scikit-learn version: 0.23.2
+
+--------------EXECUTION PARAMETERS--------------
+INPUT DATA
+	input_type: matrix
+	output: TCGA_CN176X
+	input_data: /tmp/RtmphYcBmk/dir852158ab0364/sigprofiler_input.txt
+	reference_genome: GRCh37
+	context_types: SBS176
+	exome: False
+NMF REPLICATES
+	minimum_signatures: 2
+	maximum_signatures: 30
+	NMF_replicates: 100
+NMF ENGINE
+	NMF_init: random
+	precision: single
+	matrix_normalization: gmm
+	resample: True
+	seeds: random
+	min_NMF_iterations: 10,000
+	max_NMF_iterations: 1,000,000
+	NMF_test_conv: 10,000
+	NMF_tolerance: 1e-15
+CLUSTERING
+	clustering_distance: cosine
+EXECUTION
+	cpu: 36; Maximum number of CPU is 36
+	gpu: False
+Solution Estimation
+	stability: 0.8
+	min_stability: 0.2
+	combined_stability: 1.0
+COSMIC MATCH
+	opportunity_genome: GRCh37
+	nnls_add_penalty: 0.05
+	nnls_remove_penalty: 0.01
+	initial_remove_penalty: 0.05
+	de_novo_fit_penalty: 0.02
+	refit_denovo_signatures: False
+
+-------Analysis Progress------- 
+[2020-11-29 17:39:12] Analysis started: 
+
+##################################
+
+[2020-11-29 17:39:18] Analysis started for SBS176. Matrix size [176 rows x 10851 columns]
+
+[2020-11-29 17:39:18] Normalization GMM with cutoff value set at 17600
+
+[2020-11-29 19:12:03] SBS176 de novo extraction completed for a total of 2 signatures! 
+Execution time:1:32:45
+
+[2020-11-29 23:58:10] SBS176 de novo extraction completed for a total of 3 signatures! 
+Execution time:4:46:06
+
+[2020-11-30 08:32:21] SBS176 de novo extraction completed for a total of 4 signatures! 
+Execution time:8:34:11
+
+[2020-11-30 19:51:18] SBS176 de novo extraction completed for a total of 5 signatures! 
+Execution time:11:18:56
+
+[2020-12-01 07:10:18] SBS176 de novo extraction completed for a total of 6 signatures! 
+Execution time:11:18:59
+
+[2020-12-01 21:14:24] SBS176 de novo extraction completed for a total of 7 signatures! 
+Execution time:14:04:06
+
+[2020-12-02 15:48:43] SBS176 de novo extraction completed for a total of 8 signatures! 
+Execution time:18:34:19
+
+[2020-12-03 12:53:25] SBS176 de novo extraction completed for a total of 9 signatures! 
+Execution time:21:04:41
+
+[2020-12-04 11:25:25] SBS176 de novo extraction completed for a total of 10 signatures! 
+Execution time:22:31:59
+
+[2020-12-05 10:20:15] SBS176 de novo extraction completed for a total of 11 signatures! 
+Execution time:22:54:50
+
+[2020-12-06 11:36:03] SBS176 de novo extraction completed for a total of 12 signatures! 
+Execution time:1 day, 1:15:48
+
+[2020-12-07 14:43:31] SBS176 de novo extraction completed for a total of 13 signatures! 
+Execution time:1 day, 3:07:28
+
+[2020-12-09 01:15:22] SBS176 de novo extraction completed for a total of 14 signatures! 
+Execution time:1 day, 10:31:50
+
+[2020-12-10 08:02:39] SBS176 de novo extraction completed for a total of 15 signatures! 
+Execution time:1 day, 6:47:17
+
+[2020-12-11 16:05:31] SBS176 de novo extraction completed for a total of 16 signatures! 
+Execution time:1 day, 8:02:51
+
+[2020-12-13 02:19:40] SBS176 de novo extraction completed for a total of 17 signatures! 
+Execution time:1 day, 10:14:09
+
+[2020-12-14 14:56:13] SBS176 de novo extraction completed for a total of 18 signatures! 
+Execution time:1 day, 12:36:32
+
+[2020-12-16 02:39:41] SBS176 de novo extraction completed for a total of 19 signatures! 
+Execution time:1 day, 11:43:27
+
+[2020-12-18 02:54:09] SBS176 de novo extraction completed for a total of 20 signatures! 
+Execution time:2 days, 0:14:28
+
+[2020-12-19 20:20:57] SBS176 de novo extraction completed for a total of 21 signatures! 
+Execution time:1 day, 17:26:47
+
+[2020-12-21 19:30:07] SBS176 de novo extraction completed for a total of 22 signatures! 
+Execution time:1 day, 23:09:10
+
+[2020-12-24 00:44:41] SBS176 de novo extraction completed for a total of 23 signatures! 
+Execution time:2 days, 5:14:34
+
+[2020-12-25 19:03:07] SBS176 de novo extraction completed for a total of 24 signatures! 
+Execution time:1 day, 18:18:25
+
+[2020-12-27 07:50:06] SBS176 de novo extraction completed for a total of 25 signatures! 
+Execution time:1 day, 12:46:58
+
+[2020-12-29 04:40:22] SBS176 de novo extraction completed for a total of 26 signatures! 
+Execution time:1 day, 20:50:16
+
+[2020-12-30 12:35:04] SBS176 de novo extraction completed for a total of 27 signatures! 
+Execution time:1 day, 7:54:41
+
+[2020-12-31 19:04:04] SBS176 de novo extraction completed for a total of 28 signatures! 
+Execution time:1 day, 6:29:00
+
+[2021-01-02 04:50:07] SBS176 de novo extraction completed for a total of 29 signatures! 
+Execution time:1 day, 9:46:02
+
+[2021-01-03 14:15:32] SBS176 de novo extraction completed for a total of 30 signatures! 
+Execution time:1 day, 9:25:25
+
+[2021-01-03 14:48:21] Analysis ended: 
+
+-------Job Status------- 
+Analysis of mutational signatures completed successfully! 
+Total execution time: 34 days, 21:09:09 
+Results can be found in:  TCGA_CN176X  folder
+```
+
+Next we determine the signature number.
+
+```{r eval=FALSE}
+library(sigminer)
+SP_TCGA <- sigprofiler_import("../SP/TCGA_CN176X/", order_by_expo = TRUE, type = "all")
+saveRDS(SP_TCGA, file = "../data/TCGA/tcga_cn_solutions_sp.rds")
+```
+
+
+```{r}
+SP_TCGA <- readRDS("../data/TCGA/tcga_cn_solutions_sp.rds")
+```
+
+```{r fig.width=9, fig.height=5}
+show_sig_number_survey(
+  SP_TCGA$all_stats %>%
+    dplyr::rename(
+      s = `Stability (Avg Silhouette)`,
+      e = `Mean Cosine Distance`
+    ) %>%
+    dplyr::mutate(
+      SignatureNumber = as.integer(gsub("[^0-9]", "", SignatureNumber))
+    ),
+  x = "SignatureNumber",
+  left_y = "s", right_y = "e",
+  left_name = "Stability (Avg Silhouette)",
+  right_name = "Mean Cosine Distance",
+  highlight = 20
+)
+```
+
+We pick up 20 signatures for TCGA data due to its relatively high stability and low distance.
+
+```{r eval=FALSE}
+tcga_sigs <- SP_TCGA$solution_list$S20
+saveRDS(tcga_sigs, file = "../data/TCGA/tcga_cn_sigs_CN176_signature.rds")
+```
+
+Here we try know how well each sample catalog profile can be constructed from the signature combination.
+
+Firstly we get the activity data.
+
+```{r}
+tcga_sigs <- readRDS("../data/TCGA/tcga_cn_sigs_CN176_signature.rds")
+tcga_act <- list(
+  absolute = get_sig_exposure(tcga_sigs, type = "absolute"),
+  relative = get_sig_exposure(tcga_sigs, type = "relative", rel_threshold = 0),
+  similarity = tcga_sigs$Stats$samples[, .(Samples, `Cosine Similarity`)]
+)
+
+colnames(tcga_act$similarity) <- c("sample", "similarity")
+
+saveRDS(tcga_act, file = "../data/TCGA/tcga_cn_sigs_CN176_activity.rds")
+```
+
+Check the stat summary of reconstructed Cosine similarity.
+
+```{r}
+summary(tcga_act$similarity$similarity)
+```
+```{r fig.height=3.5, fig.width=5}
+hist(tcga_act$similarity$similarity, breaks = 100, xlab = "Reconstructed similarity", main = NA)
+```
+
+
+Let's go further check the similarities between PCAWG CNS and TCGA CNS.
+
+```{r}
+pcawg_sigs <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
+```
+
+Run similarity analysis.
+
+```{r}
+sim <- get_sig_similarity(pcawg_sigs, tcga_sigs)
+```
+
+```{r fig.height=6, fig.width=7}
+pheatmap::pheatmap(sim$similarity, cluster_rows = FALSE, cluster_cols = FALSE, display_numbers = TRUE)
+```
+
+From the pheatmap, we can see that:
+
+- Most of PCAWG copy number signatures can be matched to TCGA copy number signatures with `>0.8` similarity.
+- CNS4, CNS5, CNS6 and CNS14 from PCAWG has lower similarity to TCGA CNS. This indicates either they are not shared signatures or they have relatively different patterns in this two dataset.
+
+It is not surprising to see that TCGA has more copy number signatures than PCAWG due to about 4 times more sample number.
+
+This data remind us it is not easy to get perfect matched copy number signatures between different datasets due to the following reasons:
+
+- TCGA copy number data are generated from SNP array and PCAWG copy number data are generated from WGS. 
+- They also use different copy number calling softwares. Considering PCAWG data are consensus copy number data from many known calling software, the quality of PCAWG data is much higher than that of TCGA data.
+
+Let's get the summary of match similarity.
+
+```{r}
+summary(apply(sim$similarity, 1, max))
+```
+
+### TCGA CNS labeling and analysis
+
+To better integrate PCAWG and TCGA result, here we use PCAWG CNS as reference and label TCGA copy number signatures by following the rule:
+
+- Define the signature similarity level: >=0.8 (High, H), >=0.5(Medium, M), >=0.3(Low, L).
+
+Based on the rule, we can get the labels for TCGA signatures according to the similarity matrix heatmap.
+
+```{r message=FALSE}
+label_df <- readr::read_csv("../data/PCAWG_TCGA_CNS_match.csv")
+label_df$label = paste(label_df$TCGA, label_df$match, sep = "-")
+```
+
+```{r}
+DT::datatable(label_df)
+```
+
+#### TCGA survival analysis
+
+Obtain signature activity and survival data.
+
+Update TCGA signature names.
+
+```{r}
+label_map <- label_df$label
+names(label_map) <- label_df$TCGA
+colnames(tcga_act$absolute)[-1] <- label_map[colnames(tcga_act$absolute)[-1]]
+colnames(tcga_act$relative)[-1] <- label_map[colnames(tcga_act$relative)[-1]]
+```
+
+Do same operation like PCAWG: keep only samples with >75% reconstructed similarity and divide activity value by 10.
+
+```{r}
+df_act <- data.table::copy(tcga_act$absolute)
+df_act <- df_act %>% 
+  mutate(across(where(is.numeric), ~./10))
+
+keep_tcga_samples <- tcga_act$similarity %>% 
+  filter(similarity > 0.75) %>% 
+  pull(sample)
+```
+
+Read phenotype data.
+
+```{r}
+#tcga_act <- readRDS(file = "../data/TCGA/tcga_cn_sigs_CN176_activity.rds")
+tcga_cli <- readRDS("../data/TCGA/tcga_cli.rds")
+tcga_type <- readRDS("../data/TCGA/TCGA_type_info.rds")
+```
+
+Merge the data.
+
+```{r}
+tcga_surv_df <- reduce(list(
+  tcga_type,
+  tcga_cli,
+  df_act
+), left_join, by = "sample") %>% 
+  filter(sample %in% keep_tcga_samples) %>% 
+  filter(!is.na(cancer_type))
+```
+
+Same as for PCAWG data, we build two multi-variable cox model here. However,  we handle "OS" and "PFI" data here.
+
+Control the cancer types, and run Cox for each signatures:
+
+```{r fig.width=8, fig.height=7}
+p1 <- show_forest(tcga_surv_df,
+  covariates = label_df$label, controls = "cancer_type",
+  vars_to_show = label_df$label,
+  merge_models = TRUE, add_caption = FALSE, point_size = 2,
+  time = "OS.time", status = "OS"
+)
+p1
+```
+
+Control the cancer types, and run Cox for all signatures in one model:
+
+```{r fig.width=8, fig.height=7}
+p2 <- show_forest(tcga_surv_df,
+  covariates = label_df$label[1], controls = c(label_df$label[-1], "cancer_type"),
+  vars_to_show = label_df$label,
+  merge_models = TRUE, add_caption = FALSE, point_size = 2,
+  time = "OS.time", status = "OS"
+)
+p2
+```
+
+Control the cancer types, and run Cox for each signatures:
+
+```{r fig.width=8, fig.height=7}
+p3 <- show_forest(tcga_surv_df %>% filter(!is.na(PFI.time)),
+  covariates = label_df$label, controls = "cancer_type",
+  vars_to_show = label_df$label,
+  merge_models = TRUE, add_caption = FALSE, point_size = 2,
+  time = "PFI.time", status = "PFI"
+)
+p3
+```
+
+Control the cancer types, and run Cox for all signatures in one model:
+
+```{r fig.width=8, fig.height=7}
+p4 <- show_forest(tcga_surv_df %>% filter(!is.na(PFI.time)),
+  covariates = label_df$label[1], controls = c(label_df$label[-1], "cancer_type"),
+  vars_to_show = label_df$label,
+  merge_models = TRUE, add_caption = FALSE, point_size = 2,
+  time = "PFI.time", status = "PFI"
+)
+p4
+```
+
+#### Show signature profile for unmatched/low-matched signatures
+
+```{r}
+library(tidyverse)
+
+tcga_sig_mat <- sig_signature(tcga_sigs)
+
+um_df <- label_df %>% filter(
+  match %in% c("CNS6(L)_3", "CNS13(L)_2", "UNMATCH1", "UNMATCH2"))
+um_names <- um_df$label
+names(um_names) <- um_df$TCGA
+
+um_sig_mat <- tcga_sig_mat[, names(um_names)]
+colnames(um_sig_mat) <- as.character(um_names)
+```
+
+```{r, fig.width=14, fig.height=5}
+p <- show_sig_profile(um_sig_mat, mode = "copynumber", method = "X", 
+                      check_sig_names = FALSE, style = "cosmic", 
+                      by_context = TRUE, font_scale = 0.6,
+                      sig_orders = c(2, 3, 1, 4))
+p
+```
+
+Save the profile.
+
+```{r, fig.width=14, fig.height=5}
+p <- show_sig_profile_loop(um_sig_mat[, c(2, 3, 1, 4)], mode = "copynumber", method = "X", 
+                           check_sig_names = FALSE, style = "cosmic", 
+                           by_context = TRUE, font_scale = 0.6)
+ggsave("../output/TCGA_unmatched_sig_profile_c176_by_context.pdf", plot = p,
+       width = 14, height = 8)
+```
+
+#### Show representative sample profile for unmatched signatures
+
+Here we will draw copy number profile of 2 representative samples for each signature.
+
+```{r}
+get_sample_from_sig <- function(dt, sig) {
+  res <- head(dt[order(dt[[sig]], dt[[paste0("ABS_", sig)]], decreasing = TRUE)], 2L)
+  res
+}
+```
+
+Read CopyNumber object for TCGA data.
+
+```{r}
+tcga_cn_obj <- readRDS("../data/TCGA/tcga_cn_obj.rds")
+samp_summary <- tcga_cn_obj@summary.per.sample
+rel_activity <- tcga_act$relative
+abs_activity <- tcga_act$absolute
+
+rel_activity <- rel_activity[, lapply(.SD, function(x) {
+  if (is.numeric(x)) round(x, 2) else x
+})]
+
+colnames(abs_activity)[-1] <- paste0("ABS_", colnames(abs_activity)[-1])
+act <- merge(
+  rel_activity, abs_activity,
+  by = "sample"
+)
+```
+
+```{r}
+dir.create("../output/enrich_samples_tcga/", showWarnings = FALSE)
+for (i in colnames(rel_activity)[-1]) {
+  cat(paste0("Most enriched in ", i, "\n"))
+  s <- get_sample_from_sig(act, i)
+  print(s)
+  plist <- show_cn_profile(tcga_cn_obj,
+    samples = s$sample,
+    show_title = TRUE,
+    return_plotlist = TRUE
+  )
+  plist <- purrr::map2(plist, s$sample, function(p, x) {
+    s <- samp_summary[sample == x]
+    text <- paste0(
+      "n_of_seg:", s$n_of_seg, "\n",
+      "n_of_amp:", s$n_of_amp, "\n",
+      "n_of_del:", s$n_of_del, "\n",
+      "rel:", act[sample == x][[i]], "\n",
+      "abs:", act[sample == x][[paste0("ABS_", i)]], "\n"
+    )
+    p <- p + annotate("text",
+      x = Inf, y = Inf, hjust = 1, vjust = 1,
+      label = text, color = "gray50"
+    )
+    p
+  })
+  p <- cowplot::plot_grid(plotlist = plist, nrow = 2)
+  print(p)
+  ggplot2::ggsave(file.path("../output/enrich_samples_tcga/", paste0(gsub("/","_",i), ".pdf")),
+    plot = p, width = 12, height = 6
+  )
+}
+```
+
+
+### Merged CNS from clustering of cancer-type associated CNS
+
+To further validate the CNS (stability) identified in PCAWG whole dataset. We also tried the cancer-type-wise signature identification pipeline from @degasperiPracticalFrameworkOnline2020, we implemented the procedure in our package `sigminer` by following the method description. [A benchmark](https://github.com/ShixiangWang/sigminer#key-interfaces-and-their-performances) has been done to make sure our implementation works properly.
+
+1000 NMF runs (20 bootstrap catalogs and 50 NMF runs for each bootstrap catalog) was applied for data from each cancer type, which is similar to @degasperiPracticalFrameworkOnline2020. 
+
+```{r eval=FALSE}
+# This script is running on HPC
+library(sigminer)
+
+tally_X <- readRDS("pcawg_cn_tally_X.rds")
+pcawg_types <- readRDS("pcawg_type_info.rds")
+
+for (i in unique(pcawg_types$cancer_type)) {
+  message("handling type: ", i)
+
+  fn <- file.path("BP", paste0("PCAWG_CN176_", gsub("/", "-", i), ".rds"))
+
+  if (!file.exists(fn)) {
+    type_samples <- pcawg_types %>%
+      dplyr::filter(cancer_type == i) %>%
+      dplyr::pull(sample)
+    message("Sample number: ", length(type_samples))
+
+    sigs <- bp_extract_signatures(
+      tally_X$nmf_matrix[type_samples, , drop = FALSE],
+      range = 2:min(20, length(type_samples)-1),
+      cores = 30,
+      cores_solution = 20,
+      cache_dir = "BP/BP_PCAWG_types",
+      keep_cache = TRUE,
+      only_core_stats = TRUE
+    )
+    saveRDS(sigs, file = fn)
+  }
+}
+```
+
+We then load the result and do manual inspection to determine the proper signature number for each cancer type.
+
+```{r eval=FALSE}
+library(sigminer)
+
+cancer_type_files <- list.files("../data/cancer_types/", pattern = "PCAWG_CN176", full.names = TRUE)
+pcawg <- lapply(cancer_type_files, readRDS)
+
+bp_show_survey2(pcawg[[1]]) # 11
+bp_show_survey2(pcawg[[2]]) # 14
+bp_show_survey2(pcawg[[3]]) # 13
+bp_show_survey2(pcawg[[4]]) # 8
+bp_show_survey2(pcawg[[5]]) # 14
+bp_show_survey2(pcawg[[6]]) # 11
+bp_show_survey2(pcawg[[7]]) # 12
+bp_show_survey2(pcawg[[8]]) # 8
+bp_show_survey2(pcawg[[9]]) # 7
+bp_show_survey2(pcawg[[10]]) # 5
+bp_show_survey2(pcawg[[11]]) # 13
+bp_show_survey2(pcawg[[12]]) # 9
+bp_show_survey2(pcawg[[13]]) # 15
+bp_show_survey2(pcawg[[14]]) # 7
+bp_show_survey2(pcawg[[15]]) # 11
+bp_show_survey2(pcawg[[16]]) # 12
+bp_show_survey2(pcawg[[17]]) # 12
+bp_show_survey2(pcawg[[18]]) # 17
+bp_show_survey2(pcawg[[19]]) # 12
+bp_show_survey2(pcawg[[20]]) # 6
+bp_show_survey2(pcawg[[21]]) # 3
+bp_show_survey2(pcawg[[22]]) # 7
+bp_show_survey2(pcawg[[23]]) # 11
+bp_show_survey2(pcawg[[24]]) # 19
+bp_show_survey2(pcawg[[25]]) # 8
+bp_show_survey2(pcawg[[26]]) # 10
+bp_show_survey2(pcawg[[27]]) # 11
+bp_show_survey2(pcawg[[28]]) # 9
+bp_show_survey2(pcawg[[29]]) # 9
+bp_show_survey2(pcawg[[30]]) # 15
+bp_show_survey2(pcawg[[31]]) # 6
+bp_show_survey2(pcawg[[32]]) # 17
+
+type_sig <- data.frame(
+  cancer_type = sub(".*_CN176_([^_]+).rds", "\\1", basename(cancer_type_files)),
+  signum = c(11, 14, 13, 8, 14, 11, 12, 8,
+             7, 5, 13, 9, 15, 7, 11, 12,
+             12, 17, 12, 6, 3, 7, 11, 19,
+             8, 10, 11, 9, 9, 15, 6, 17)
+)
+
+pcawg_sig_list <- lapply(
+  seq_along(pcawg),
+  function(i) {
+    bp_get_sig_obj(pcawg[[i]], signum = type_sig$signum[i])
+  }
+)
+
+names(pcawg_sig_list) <- type_sig$cancer_type
+saveRDS(pcawg_sig_list, file = "data/pcawg_type_CNS.rds")
+```
+
+The signature number ranges from `3` to `19`.
+
+Next we need to collapse all shared signatures from cancer types. To do this, we cluster all signatures based their cosine dissimilarity.
+
+```{r}
+library(sigminer)
+
+pcawg_sig_list <- readRDS("../data/pcawg_type_CNS.rds")
+pcawg_sig_list$`Biliary-AdenoCA`
+
+cls <- bp_cluster_iter_list(pcawg_sig_list, k = 2:30)
+```
+
+We try `2` to `30` signatures here to check how the silhouette changes in different cluster number `k`.
+
+```{r}
+cls$sil_summary
+plot(cls$sil_summary$k, cls$sil_summary$mean, type = "b", xlab = "Total signatures", ylab = "Mean silhouette")
+```
+
+In general, the mean silhouette is not high. But we can still see that `20` or `22` may be suitable. `k=5` is not considered because it is too small to explain our data.
+
+Signature similarity is the key parameter in our study. Here we use an average cosine distance `0.4` (i.e. signatures with similarity `>=0.6` could be clustered as one) as a cutoff:
+
+```{r fig.width=15}
+factoextra::fviz_dend(cls$cluster, h = 0.4, cex = 0.15,
+                      main = "",
+                      xlab = "",
+                      ylab = "1 - cosine similarity, average linkage")
+```
+
+Check the cluster number:
+
+```{r}
+cls_tree <- cutree(cls$cluster, h = 0.4)
+table(cls_tree)
+```
+
+This is close to `22`. We observe there are a few isolated clusters with only one signature, they may be artifacts or should be assigned to other clusters but cannot due to low similarity to others.
+
+Next we obtain clustered (grouped) signatures by averaging signatures in a cluster.
+
+```{r}
+grp_sigs <- bp_get_clustered_sigs(cls, cls_tree)
+```
+
+Next we load PCAWG global CNS and check their similarity.
+
+```{r}
+pcawg_sigs <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
+```
+
+```{r fig.width=8}
+sim1 <- get_sig_similarity(pcawg_sigs, grp_sigs$grp_sigs)
+sim_mat <- sim1$similarity
+colnames(sim_mat) <- gsub("Sig", "Group-Sig", colnames(sim_mat))
+pheatmap::pheatmap(sim_mat, cluster_rows = FALSE, cluster_cols = FALSE, display_numbers = TRUE)
+```
+We can see that most of PCAWG global signatures can be properly matched to group signatures.
+`CNS2` 和 `CNS13` seems not stable and tend to be easier affected by extraction procedure.
+
+Also, we observe almost all group signatures on the right side can be assigned to a PCAWG global signatures, although most of them have relatively low similarity. This data indicate the signatures may be redundant.
+
+Let's check the similarity between group signatures and best matched global signatures.
+
+```{r}
+mc <- apply(sim1$similarity, 2, which.max)
+mc_sim <- apply(sim1$similarity, 2, max)
+mc_sim
+```
+
+Next let's visualize the data along with the similarity of signatures within a group (cluster).
+
+```{r}
+mc_df <- data.frame(
+  grp_sig = names(mc),
+  global_sig = paste0("CNS", mc),
+  sim = as.numeric(mc_sim)
+) %>%
+  dplyr::mutate(
+    label = paste0(grp_sig, "(", global_sig, ", ", sim, ")"),
+    grp_sig = factor(grp_sig, levels = paste0("Sig", seq_len(nrow(.))))
+  ) %>%
+  dplyr::arrange(grp_sig)
+```
+
+```{r}
+ggpubr::ggboxplot(grp_sigs$sim_sig_to_grp_mean,
+                  x = "grp_sig", y = "sim", width = 0.3,
+                  xlab = FALSE, ylab = "cosine similarity",
+                  title = "Cosine similarity between signatures in each group") +
+  ggpubr::rotate_x_text()
+```
+
+Add labels:
+
+```{r}
+ggpubr::ggboxplot(grp_sigs$sim_sig_to_grp_mean, #%>%
+                  #dplyr::filter(grp_sig %in% select_sigs),
+                  x = "grp_sig", y = "sim", width = 0.3,
+                  xlab = FALSE, ylab = "Cosine similarity",
+                  title = "Cosine similarity between signatures in each group") +
+  ggpubr::rotate_x_text() +
+  scale_x_discrete(labels = mc_df$label)
+```
+
+> Here y axis indicates cosine similarity between the averaging signature of each group and the individual signatures that belong to each group.
+
+## PCAWG and TCGA Pan-Cancer copy number alteration profile and analysis
+
+```{r}
+library(sigminer)
+
+pcawg_cn <- readRDS("../data/pcawg_cn_obj.rds")
+pcawg_type <- readRDS("../data/pcawg_type_info.rds")
+pcawg_sbs <- data.table::fread("../data/PCAWG/PCAWG_sigProfiler_SBS_signatures_in_samples.csv")
+pcawg_sbs <- pcawg_sbs %>% 
+  dplyr::mutate(
+    sbs = rowSums(pcawg_sbs[, grepl("SBS", colnames(pcawg_sbs)), with = FALSE], na.rm = TRUE)
+  ) %>% 
+  dplyr::rename(
+    sample = `Sample Names`
+  ) %>% 
+  dplyr::select(sample, sbs)
+pcawg_ids <- data.table::fread("../data/PCAWG/PCAWG_SigProfiler_ID_signatures_in_samples.csv")
+pcawg_ids <- pcawg_ids %>% 
+  dplyr::mutate(
+    ids = rowSums(pcawg_ids[, grepl("ID", colnames(pcawg_ids)), with = FALSE], na.rm = TRUE)
+  ) %>% 
+  dplyr::rename(
+    sample = `Sample Names`
+  ) %>% 
+  dplyr::select(sample, ids)
+
+
+pcawg_summary <- purrr::reduce(
+  list(
+    pcawg_cn@summary.per.sample,
+    pcawg_sbs,
+    pcawg_ids,
+    pcawg_type
+  ), dplyr::left_join, by = "sample")
+
+tcga_cn <- readRDS("../data/TCGA/tcga_cn_obj.rds")
+tcga_type <- readRDS("../data/TCGA/TCGA_type_info.rds")
+tcga_sbs <- data.table::fread("../data/PCAWG/TCGA_WES_sigProfiler_SBS_signatures_in_samples.csv")
+tcga_sbs <- tcga_sbs %>% 
+  dplyr::mutate(
+    sbs = rowSums(tcga_sbs[, grepl("SBS", colnames(tcga_sbs)), with = FALSE], na.rm = TRUE)
+  ) %>% 
+  dplyr::rename(
+    sample = `Sample Names`
+  ) %>% 
+  dplyr::mutate(sample = substr(sample, 1, 15)) %>% 
+  dplyr::select(sample, sbs)
+tcga_ids <- data.table::fread("../data/PCAWG/TCGA_WES_sigProfiler_ID_signatures_in_samples.csv")
+tcga_ids <- tcga_ids %>% 
+  dplyr::mutate(
+    ids = rowSums(tcga_ids[, grepl("ID", colnames(tcga_ids)), with = FALSE], na.rm = TRUE)
+  ) %>% 
+  dplyr::rename(
+    sample = `Sample Names`
+  ) %>% 
+  dplyr::mutate(
+    sample = substr(sample, 1, 15)
+  ) %>% 
+  dplyr::select(sample, ids)
+
+tcga_summary <- purrr::reduce(
+  list(
+    tcga_cn@summary.per.sample,
+    tcga_sbs,
+    tcga_ids,
+    tcga_type
+  ), dplyr::left_join, by = "sample")
+```
+
+### Summary
+
+#### SCNA length distribution
+
+PCAWG:
+
+```{r fig.width=6, fig.height=4}
+show_cn_distribution(pcawg_cn)
+```
+
+TCGA:
+
+```{r fig.width=6, fig.height=4}
+show_cn_distribution(tcga_cn)
+```
+
+#### SCNA chromosome distribution
+
+PCAWG:
+
+```{r fig.width=8, fig.height=4}
+show_cn_distribution(pcawg_cn, mode = "cd", fill = TRUE)
+```
+
+TCGA:
+
+```{r fig.width=8, fig.height=4}
+show_cn_distribution(tcga_cn, mode = "cd", fill = TRUE)
+```
+
+#### SCNA variation frequency
+
+PCAWG:
+
+```{r fig.width=8, fig.height=4}
+show_cn_group_profile(pcawg_cn)
+```
+
+TCGA:
+
+```{r fig.width=8, fig.height=4}
+show_cn_group_profile(tcga_cn)
+```
+
+### Summary data analysis
+
+```{r}
+library(ggpubr)
+```
+
+#### Distribution
+
+```{r}
+data <- pcawg_summary %>% 
+  dplyr::select(sample, n_of_cnv, cna_burden, sbs, ids) %>% 
+  dplyr::mutate(
+    n_of_cnv = log10(n_of_cnv + 1),
+    sbs = log10(sbs + 1),
+    ids = log10(ids + 1)
+  ) %>% 
+  setNames(c("sample", "Total CNVs (log10)", "CNA burden", "Total SNVs (log10)", "Total Indels (log10)")) %>% 
+  tidyr::pivot_longer(colnames(.)[-1])
+
+ggplot(data, aes(x = name, y = value)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1, fill = "gold") +
+  facet_wrap(~name, scales = "free") +
+  labs(x = NULL, y = NULL) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+```
+
+```{r}
+library(ggridges)
+
+ggplot(data, aes(x = value, y = name, fill = name)) +
+  geom_density_ridges() +
+  labs(x = NULL, y = NULL) +
+  theme_ridges() +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+data <- tcga_summary %>% 
+  dplyr::select(sample, n_of_cnv, cna_burden, sbs, ids) %>% 
+  dplyr::mutate(
+    n_of_cnv = log10(n_of_cnv + 1),
+    sbs = log10(sbs + 1),
+    ids = log10(ids + 1)
+  ) %>% 
+  setNames(c("sample", "Total CNVs (log10)", "CNA burden", "Total SNVs (log10)", "Total Indels (log10)")) %>% 
+  tidyr::pivot_longer(colnames(.)[-1])
+
+ggplot(data, aes(x = name, y = value)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1, fill = "gold") +
+  facet_wrap(~name, scales = "free") +
+  labs(x = NULL, y = NULL) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+```
+
+```{r}
+ggplot(data, aes(x = value, y = name, fill = name)) +
+  geom_density_ridges() +
+  labs(x = NULL, y = NULL) +
+  theme_ridges() +
+  theme(legend.position = "none")
+```
+
+CNA burden pancancer distribution.
+
+```{r fig.width=6, fig.height=7}
+p <- ggplot(pcawg_summary, aes(x = cna_burden, y = cancer_type, fill = cancer_type)) +
+  geom_density_ridges() +
+  labs(x = "CNA burden", y = NULL) +
+  theme_ridges() +
+  theme(legend.position = "none")
+p
+```
+
+```{r fig.width=6, fig.height=7}
+p2 <- ggplot(tcga_summary %>% 
+               dplyr::filter(!is.na(cancer_type)),
+             aes(x = cna_burden, y = cancer_type, fill = cancer_type)) +
+  geom_density_ridges() +
+  labs(x = "CNA burden", y = NULL) +
+  theme_ridges() +
+  theme(legend.position = "none")
+p2
+```
+
+#### Correlation
+
+PCAWG:
+
+```{r}
+data <- pcawg_summary %>% 
+  dplyr::select(n_of_cnv, cna_burden, sbs, ids) %>% 
+  dplyr::mutate(
+    n_of_cnv = log10(n_of_cnv + 1),
+    sbs = log10(sbs + 1),
+    ids = log10(ids + 1)
+  ) %>% 
+  setNames(c("Total CNVs (log10)", "CNA burden", "Total SNVs (log10)", "Total Indels (log10)"))
+```
+
+```{r}
+show_cor(data)
+```
+Show some detail scatter plots.
+
+```{r}
+library(ggpubr)
+
+ggscatter(data, x = "Total CNVs (log10)", y = "Total SNVs (log10)",
+   color = "black", shape = 21, size = 1, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "spearman", label.x = 1.5, label.sep = "\n")
+   )
+
+```
+
+```{r}
+ggscatter(data, x = "Total CNVs (log10)", y = "Total Indels (log10)",
+   color = "black", shape = 21, size = 1, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "spearman", label.x = 2.5, label.sep = "\n")
+   )
+
+```
+
+
+```{r}
+data <- tcga_summary %>% 
+  dplyr::select(n_of_cnv, cna_burden, sbs, ids) %>% 
+  dplyr::mutate(
+    n_of_cnv = log10(n_of_cnv + 1),
+    sbs = log10(sbs + 1),
+    ids = log10(ids + 1)
+  ) %>% 
+  setNames(c("Total CNVs (log10)", "CNA burden", "Total SNVs (log10)", "Total Indels (log10)"))
+```
+
+```{r}
+show_cor(data)
+```
+Show some detail scatter plots.
+
+```{r}
+ggscatter(data, x = "Total CNVs (log10)", y = "Total SNVs (log10)",
+   color = "black", shape = 21, size = 1, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "spearman", label.x = 0.5, label.sep = "\n")
+   )
+
+```
+
+```{r}
+ggscatter(data, x = "Total CNVs (log10)", y = "Total Indels (log10)",
+   color = "black", shape = 21, size = 1, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "spearman", label.x = 0.5, label.sep = "\n")
+   )
+
+```
+
+### Cancer type 
+
+
+#### PCAWG CNV number
+
+```{r fig.width=12, fig.height=6}
+show_group_distribution(
+  pcawg_summary,
+  gvar = "cancer_type",
+  dvar = "n_of_cnv",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "Number of CNV"
+)
+```
+
+
+#### PCAWG CNA burden
+
+```{r fig.width=12, fig.height=6}
+show_group_distribution(
+  pcawg_summary,
+  gvar = "cancer_type",
+  dvar = "cna_burden",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "CNA burden"
+)
+```
+
+#### PCAWG SBS number
+
+```{r fig.width=12, fig.height=6}
+show_group_distribution(
+  pcawg_summary %>% dplyr::mutate(sbs = log10(sbs + 1)),
+  gvar = "cancer_type",
+  dvar = "sbs",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "Number of SBS (log10)"
+)
+```
+
+#### PCAWG Indel number
+
+```{r fig.width=12, fig.height=6}
+show_group_distribution(
+  pcawg_summary %>% dplyr::mutate(ids = log10(ids + 1)),
+  gvar = "cancer_type",
+  dvar = "ids",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "Number of Indel (log10)"
+)
+```
+
+
+
+#### TCGA CNV number
+
+```{r fig.width=15, fig.height=6}
+show_group_distribution(
+  tcga_summary %>% dplyr::filter(!is.na(cancer_type)),
+  gvar = "cancer_type",
+  dvar = "n_of_cnv",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "Number of CNV"
+)
+```
+
+
+#### TCGA CNA burden
+
+```{r fig.width=15, fig.height=6}
+show_group_distribution(
+  tcga_summary %>% dplyr::filter(!is.na(cancer_type)),
+  gvar = "cancer_type",
+  dvar = "cna_burden",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "CNA burden"
+)
+```
+
+#### TCGA SBS number
+
+```{r fig.width=15, fig.height=6}
+show_group_distribution(
+  tcga_summary %>% dplyr::filter(!is.na(cancer_type)) %>% 
+    dplyr::mutate(sbs = log10(sbs + 1)),
+  gvar = "cancer_type",
+  dvar = "sbs",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "Number of SBS (log10)"
+)
+```
+
+#### TCGA Indel number
+
+```{r fig.width=15, fig.height=6}
+show_group_distribution(
+  tcga_summary %>% dplyr::filter(!is.na(cancer_type)) %>% 
+    dplyr::mutate(
+      ids = ifelse(is.na(ids), 0, ids),
+      ids = log10(ids + 1)),
+  gvar = "cancer_type",
+  dvar = "ids",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3,
+  ylab = "Number of Indel (log10)"
+)
+```
+
+### Variation enrichment in cancer types
+
+```{r}
+enrich_pcawg <- group_enrichment(
+  pcawg_summary %>% 
+    dplyr::rename(
+      `CNA burden` = cna_burden,
+      `Total CNVs` = n_of_cnv,
+      `Total SNVs` = sbs,
+      `Total Indels` = ids
+    ),
+  grp_vars = "cancer_type",
+  enrich_vars = c("CNA burden", "Total CNVs", "Total SNVs", "Total Indels"),
+  co_method = "wilcox.test"
+)
+```
+
+```{r fig.height=8, fig.width=5}
+p <- show_group_enrichment(enrich_pcawg, cut_p_value = TRUE, return_list = TRUE)
+p$cancer_type + labs(x = NULL, y = NULL) + ggpubr::rotate_x_text(angle = 45)
+```
+
+
+```{r}
+enrich_tcga <- group_enrichment(
+  tcga_summary %>% 
+    dplyr::rename(
+      `CNA burden` = cna_burden,
+      `Total CNVs` = n_of_cnv,
+      `Total SNVs` = sbs,
+      `Total Indels` = ids
+    ),
+  grp_vars = "cancer_type",
+  enrich_vars = c("CNA burden", "Total CNVs", "Total SNVs", "Total Indels"),
+  co_method = "wilcox.test"
+)
+```
+
+```{r fig.height=8, fig.width=5}
+p <- show_group_enrichment(enrich_tcga, cut_p_value = TRUE, return_list = TRUE)
+p$cancer_type + labs(x = NULL, y = NULL) + ggpubr::rotate_x_text(angle = 45)
+```
+
+## Comparison between previous method devised by our group "W" and new classification method in this study "X"
+
+We use several PCAWG cohorts including Breast and OV as example datasets to compare method W and X in two aspects:
+
+1. the similarity within copy number signatures. This result indicates if it is easy to distinguish each signature. The smaller similarity, the better to distinguish.
+2. the difference between estimated segments and observed segments. This result indicates the accuracy to estimate the total contribution of all signatures to a sample. The smaller difference, the better.
+
+Here we set the signature number from 3 to 10, and see the measures generated from these two methods.
+
+### Prepare data
+
+```{r eval=FALSE}
+library(sigminer)
+library(tidyverse)
+
+tally_X <- readRDS("../data/pcawg_cn_tally_X.rds")
+pcawg_types <- readRDS("../data/pcawg_type_info.rds")
+
+cn_obj <- readRDS("../data/pcawg_cn_obj.rds")
+tally_W <- sig_tally(cn_obj,
+                     method = "W",
+                     cores = 10)
+saveRDS(tally_W, file = "../data/pcawg_cn_tally_W.rds")
+```
+
+### Extract specified signatures
+
+```{r eval=FALSE}
+ResultX <- list()
+ResultW <- list()
+types <- c("Breast", "Ovary-AdenoCA", "Prost-AdenoCA", "Liver-HCC", "Skin-Melanoma")
+
+for (type in types) {
+  message("=> Handling type: ", type)
+  samples = pcawg_types$sample[pcawg_types$cancer_type == type]
+  matX = tally_X$nmf_matrix[samples, ]
+  matW = tally_W$nmf_matrix[samples, ]
+
+  sigX = map(3:10, ~sig_extract(matX, n_sig = ., nrun = 50, cores = 10))
+  sigW = map(3:10, ~sig_extract(matW, n_sig = ., nrun = 50, cores = 10))
+
+  ResultX[[type]] = sigX
+  ResultW[[type]] = sigW
+  rm(sigX, sigW)
+}
+
+save(ResultX, ResultW, file = "../Comparison_Sig_Data.RData")
+```
+
+### Comparison
+
+Calculates measures.
+
+```{r eval=FALSE}
+# within similarity
+get_within_similarity <- function(x) {
+  sim <- suppressMessages(get_sig_similarity(x, x, set_order = FALSE))$similarity
+  sim[upper.tri(sim)]
+}
+
+CrossSimX <- map_df(ResultX, function(x) {
+  map(x, get_within_similarity) %>% set_names(paste0(3:10, "_Sigs")) %>%
+    enframe("sig_type", "sim") %>%
+    unnest("sim")
+}, .id = "cancer_type")
+
+
+CrossSimW <- map_df(ResultW, function(x) {
+  map(x, get_within_similarity) %>% set_names(paste0(3:10, "_Sigs")) %>%
+    enframe("sig_type", "sim") %>%
+    unnest("sim")
+}, .id = "cancer_type")
+
+CrossSim <- bind_rows(
+  CrossSimX %>% mutate(method = "X"),
+  CrossSimW %>% mutate(method = "W")
+)
+
+observed_count <- cn_obj@summary.per.sample[, .(sample, n_of_seg)]
+
+get_estimated_count <- function(x) {
+  get_sig_exposure(x) %>%
+    mutate(count = rowSums(.[, -1])) %>%
+    select(sample, count)
+}
+
+count_df <- map2_df(ResultX, ResultW, function(x, y) {
+  countX <- map(x, get_estimated_count) %>% set_names(paste0(3:10, "_Sigs")) %>%
+    data.table::rbindlist(idcol = "sig_type")
+  countX$method = "X"
+  countW <- map(y, get_estimated_count) %>% set_names(paste0(3:10, "_Sigs")) %>%
+    data.table::rbindlist(idcol = "sig_type")
+  countW$method = "W"
+  rbind(countX, countW)
+}, .id = "cancer_type")
+
+count_df2 <- left_join(count_df, observed_count, by = "sample")
+
+save(CrossSim, count_df2, file = "../Comparison_Result_Data.RData")
+```
+
+```{r include=FALSE}
+load("../Comparison_Result_Data.RData")
+```
+
+```{r fig.width=12, fig.height=7}
+library(ggpubr)
+p <- ggboxplot(CrossSim %>%
+                 mutate(
+                   sig_type = stringr::str_replace(sig_type, "_Sigs", "")
+                 ),
+               x = "sig_type", y = "sim", fill = "method", facet.by = "cancer_type",
+               xlab = "Extracted signature number", ylab = "Similarity between each other") +
+  stat_compare_means(aes(group = method, label = ..p.signif..))
+p
+
+count_summary <- count_df2 %>%
+  group_by(cancer_type, sig_type, sample, method) %>%
+  summarise(rmse = sqrt(sum((count - n_of_seg)^2) / length(count)),
+            change_frac = 100 * (rmse / n_of_seg),
+            .groups = "drop")
+
+count_summary
+
+p <- ggboxplot(count_summary %>%
+            mutate(
+              sig_type = as.integer(stringr::str_replace(sig_type, "_Sigs", ""))
+            ),
+          x = "sig_type", y = "rmse", fill = "method", size = 0.5, width = 0.5, outlier.size = 0.5,
+          facet.by = "cancer_type", scales = "free_y",
+          xlab = "Extracted signature number", ylab = "RMSE between observed segments and estimated segments") +
+  stat_compare_means(aes(group = method, label = ..p.signif..))
+p
+
+p <- ggboxplot(count_summary %>%
+                 mutate(
+                   sig_type = as.integer(stringr::str_replace(sig_type, "_Sigs", ""))
+                 ),
+               x = "sig_type", y = "change_frac", fill = "method", size = 0.5, width = 0.5, outlier.size = 0.5,
+               facet.by = "cancer_type", scales = "free_y",
+               xlab = "Extracted signature number", ylab = "Change between observed segments and estimated segments (%)") +
+  stat_compare_means(aes(group = method, label = ..p.signif..))
+p
+```
+
+
+```{r include=FALSE}
+rm(list = ls()); gc()
+```
+

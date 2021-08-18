@@ -1,0 +1,103 @@
+---
+title: "Pan-Cancer Copy Number Signature Identification and Analysis"
+author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Huimin Li, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    toc_depth: 3
+    gallery: true
+    thumbnails: false
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup, include=FALSE}
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE,
+  fig.align = "center"
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+
+.regenerate_pdfs = FALSE # run some code chunks which generate a batch of pdf figures.
+```
+
+<br>
+
+This document is compiled from an RMarkdown file which contains all code or description necessary to reproduce the analysis for the accompanying project. Each section below describes a different component of the analysis and most of numbers and figures are generated directly from the underlying data on compilation.
+
+# LICENSE
+
+**If you want to reuse the code in this report, please note the license below should be followed**.
+
+The code is made available for non commercial research purposes only under the MIT. However, notwithstanding any provision of the MIT License, the software currently may not be used for commercial purposes without explicit written permission after contacting Shixiang Wang <wangshx@shanghaitech.edu.cn> or Xue-Song Liu <liuxs@shanghaitech.edu.cn>.
+
+# PART 0: Data preprocessing
+
+```{r, child="00-data-preprocessing.Rmd"}
+
+```
+
+# PART 1: Copy number signature identification and activity attribution
+
+```{r, child="01-signatures-and-activities.Rmd"}
+
+```
+
+# PART 2: Signature profile visualization and analysis
+
+```{r, child="02-signature-profile-and-analysis.Rmd"}
+
+```
+
+# PART 3: Pan-Cancer signature analysis
+
+```{r, child="03-pancancer-signature-analysis.Rmd"}
+
+```
+
+
+# PART 4: Cancer subtyping and prognosis analysis
+
+```{r, child="04-cancer-subtyping-and-prog-analysis.Rmd"}
+
+```
+
+
+# PART 5: Inference of copy number signature etiologies
+
+```{r, child="05-inference-of-etiologies.Rmd"}
+
+```
+
+
+# Supplementary Analyses
+
+```{r, child="99-supp-analysis.Rmd"}
+
+```
+
+
+# R Session:
+
+*Many thanks to authors and contributors of all packages used in this project*.
+
+```{r}
+devtools::session_info()
+```
+
+# References

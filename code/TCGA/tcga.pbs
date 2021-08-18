@@ -1,0 +1,18 @@
+#PBS -l walltime=1000:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -S /bin/bash
+#PBS -l mem=100gb
+#PBS -j oe
+#PBS -M w_shixiang@163.com
+#PBS -q pub_fast
+
+# Please set PBS arguments above
+cd /public/home/wangshx/wangshx/PCAWG-TCGA
+module load apps/R/3.6.1
+
+echo Extracting TCGA signatures...
+
+# Following are commands/scripts you want to run
+# If you do not know how to set this, please check README.md file 
+Rscript call_tcga.R
+

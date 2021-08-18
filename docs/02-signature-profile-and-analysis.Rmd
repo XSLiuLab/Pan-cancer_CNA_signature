@@ -1,0 +1,289 @@
+---
+title: "PART 2: Signature profile visualization and analysis"
+author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-02, include=FALSE}
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+In this part, we would like to visualize and analyze all tumor samples as a whole.
+
+## Signature profile visualization
+
+```{r}
+library(tidyverse)
+library(sigminer)
+
+pcawg_sigs <- readRDS(file = "../data/pcawg_cn_sigs_CN176_signature.rds")
+```
+
+Show signature profile with relative contribution value for each component.
+
+```{r, fig.height=13, fig.width=14}
+show_sig_profile(
+  pcawg_sigs,
+  mode = "copynumber",
+  method = "X",
+  style = "cosmic"
+)
+```
+
+Show signature profile with absolute contribution value (estimated segment count) for each component.
+
+```{r, fig.height=13, fig.width=14}
+show_sig_profile(
+  pcawg_sigs,
+  mode = "copynumber",
+  method = "X",
+  style = "cosmic",
+  normalize = "raw"
+)
+```
+
+Show signature activity profile.
+
+```{r fig.width=14, fig.height=7}
+show_sig_exposure(
+  pcawg_sigs,
+  style = "cosmic",
+  rm_space = TRUE,
+  palette = sigminer:::letter_colors
+)
+```
+
+## Signature analysis
+
+### Signature similarity
+
+Here we explore the similarity between copy number signatures identified in PCAWG data. High cosine similarity will cause some issues in signature assignment and activity attribution [@mauraPracticalGuideMutational2019].
+
+```{r}
+sim <- get_sig_similarity(pcawg_sigs, pcawg_sigs)
+```
+
+```{r, fig.width=5.5, fig.height=5}
+pheatmap::pheatmap(sim$similarity, cluster_cols = F, cluster_rows = F, display_numbers = TRUE)
+```
+
+Most of signature-pairs have similarity around `0.1`.
+
+### Signature activity distribution
+
+Transform data to long format.
+
+```{r}
+df_abs <- get_sig_exposure(pcawg_sigs) %>% 
+  tidyr::pivot_longer(cols = starts_with("CNS"), names_to = "sig", values_to = "activity") %>% 
+  dplyr::mutate(activity = log10(activity + 1),
+                sig = factor(sig, levels = paste0("CNS", 1:14)))
+
+df_rel <- get_sig_exposure(pcawg_sigs, type = "relative", rel_threshold = 0) %>% 
+  tidyr::pivot_longer(cols = starts_with("CNS"), names_to = "sig", values_to = "activity") %>% 
+  dplyr::mutate(
+    sig = factor(sig, levels = paste0("CNS", 1:14))
+  )
+```
+
+Plot with function in `sigminer`.
+
+```{r}
+show_group_distribution(
+  df_abs,
+  gvar = "sig",
+  dvar = "activity",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  ylab = "log10(activity+1)"
+)
+```
+
+```{r}
+show_group_distribution(
+  df_rel,
+  gvar = "sig",
+  dvar = "activity",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  ylab = "relative activity"
+)
+```
+
+## Copy number profile and signature activity
+
+### Copy number profile for representative samples
+
+Here we will draw copy number profile of 2 representative samples for each signature.
+
+```{r}
+get_sample_from_sig <- function(dt, sig) {
+  res = head(dt[order(dt[[sig]], dt[[paste0("ABS_", sig)]], decreasing = TRUE)], 2L)
+  res
+}
+```
+
+Read `CopyNumber` object for PCAWG data.
+
+```{r}
+pcawg_cn_obj <- readRDS("../data/pcawg_cn_obj.rds")
+samp_summary <- pcawg_cn_obj@summary.per.sample
+rel_activity <- get_sig_exposure(pcawg_sigs, type = "relative", rel_threshold = 0)
+abs_activity <- get_sig_exposure(pcawg_sigs, type = "absolute")
+
+rel_activity <- rel_activity[, lapply(.SD, function(x) {if (is.numeric(x)) round(x, 2) else x})]
+# all(rownames(abs_activity) == rownames(rel_activity))
+colnames(abs_activity) <- c("sample", paste0("ABS_CNS", 1:14))
+act <- merge(
+  rel_activity, abs_activity,
+  by = "sample"
+)
+```
+
+
+```{r, fig.width=12, fig.height=7}
+dir.create("../output/enrich_samples/", showWarnings = FALSE)
+for (i in paste0("CNS", 1:14)) {
+  cat(paste0("Most enriched in ", i, "\n"))
+  s = get_sample_from_sig(act, i)
+  print(s)
+  plist = show_cn_profile(pcawg_cn_obj, samples = s$sample,
+                          show_title = TRUE,
+                          return_plotlist = TRUE)
+  plist = purrr::map2(plist, s$sample, function(p, x) {
+    s = samp_summary[sample == x]
+    text = paste0(
+      "n_of_seg:", s$n_of_seg, "\n",
+      "n_of_amp:", s$n_of_amp, "\n",
+      "n_of_del:", s$n_of_del, "\n",
+      "rel:", act[sample == x][[i]], "\n",
+      "abs:", act[sample == x][[paste0("ABS_", i)]], "\n"
+    )
+    p <- p + annotate("text", x = Inf, y = Inf, hjust = 1, vjust = 1,
+                      label = text, color = "gray50")
+    p
+  })
+  p = cowplot::plot_grid(plotlist = plist, nrow = 2)
+  print(p)
+  ggplot2::ggsave(file.path("../output/enrich_samples/", paste0(i, ".pdf")),
+                    plot = p, width = 12, height = 6)
+}
+```
+
+Plot sample profile for presentation in manuscript.
+
+```{r}
+sel_samps <- c("SP117655", "SP123894", "SP105708", "SP116525", "SP117309",
+               "SP77443", "SP114903", "SP116539", "SP118048", "SP112887",
+               "SP135354", "SP37636", "SP43664", "SP96163")
+# table(pcawg_cn_obj@data[sample == "SP116539"]$chromosome)
+# table(pcawg_cn_obj@data[sample == "SP112887"]$chromosome)
+plist = list()
+for (s in sel_samps) {
+  if (s == sel_samps[4]) {
+    p = show_cn_profile(pcawg_cn_obj, samples = s, chrs = c("chr12"),
+                        show_title = TRUE,
+                        return_plotlist = TRUE)
+  } else if (s == sel_samps[8]) {
+    p = show_cn_profile(pcawg_cn_obj, samples = s, chrs = c("chr1", "chr2", "chr4", "chr5", "chr6"),
+                        show_title = TRUE,
+                        return_plotlist = TRUE)
+  } else if (s == sel_samps[10]) {
+    p = show_cn_profile(pcawg_cn_obj, samples = s, chrs = paste0("chr", c(1:10, 14, 16, 18, 19, 21)),
+                        show_title = TRUE,
+                        return_plotlist = TRUE)
+  } else if (s == sel_samps[13]) {
+    p = show_cn_profile(pcawg_cn_obj, samples = s, chrs = c("chr7"),
+                        show_title = TRUE,
+                        return_plotlist = TRUE)
+  } else {
+    p = show_cn_profile(pcawg_cn_obj, samples = s,
+                        show_title = TRUE,
+                        return_plotlist = TRUE)
+  }
+  plist[[s]] <- p[[1]] + ggplot2::labs(x = NULL)
+  
+}
+
+plist = purrr::pmap(list(plist, sel_samps, paste0("CNS", 1:14)), function(p, x, y) {
+  s = samp_summary[sample == x]
+  text = paste0(
+    "n_of_seg:", s$n_of_seg, "\n",
+    "n_of_amp:", s$n_of_amp, "\n",
+    "n_of_del:", s$n_of_del, "\n",
+    "rel:", act[sample == x][[y]], "\n",
+    "abs:", act[sample == x][[paste0("ABS_", y)]], "\n"
+  )
+  p <- p + annotate("text", x = Inf, y = Inf, hjust = 1, vjust = 1,
+                    label = text, color = "gray50")
+  p
+})
+p = cowplot::plot_grid(plotlist = plist, ncol = 1)
+ggplot2::ggsave(file.path("../output/enrich_samples/", "selected_samples.pdf"),
+                plot = p, width = 12, height = 42)
+```
+
+
+
+### Ideograph for copy number profile reconstruction
+
+Select one/two samples and draw copy number profile -> catalog profile -> signature relative activity.
+
+```{r}
+ss <- c("SP102561", "SP123964")
+```
+
+```{r}
+p = show_cn_profile(pcawg_cn_obj, samples = ss,
+                        show_title = TRUE, ncol = 1)
+ggplot2::ggsave("../output/example_cn_profile.pdf",
+                plot = p, width = 12, height = 6)
+```
+
+```{r}
+tally_X <- readRDS("../data/pcawg_cn_tally_X.rds")
+```
+
+```{r}
+p = show_catalogue(tally_X, mode = "copynumber", method = "X", style = "cosmic", samples = ss, by_context = TRUE, font_scale = 0.7)
+ggplot2::ggsave("../output/example_sig_profile.pdf",
+                plot = p, width = 15, height = 4)
+```
+
+```{r}
+p <- show_sig_exposure(sig_exposure(pcawg_sigs)[, ss], hide_samps = FALSE) + ggplot2::ylab("Activity") + ggpubr::rotate_x_text(0, hjust = 0.5)
+ggplot2::ggsave("../output/example_sig_activity.pdf",
+                plot = p, width = 4, height = 5)
+```
+
+
+
+
+```{r, include=FALSE}
+# Clear environment
+rm(list = ls())
+```
+

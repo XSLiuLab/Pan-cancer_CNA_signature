@@ -1,0 +1,615 @@
+---
+title: "PART 5: Inference of copy number signature etiologiess"
+author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-05, include=FALSE}
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+In this part, we would like to explore CN signatures in more details with association analysis and summarize what we get to infer their etiologies.
+
+Let's merge load all data we got and combine them.
+
+```{r message=FALSE}
+library(tidyverse)
+library(sigminer)
+
+tidy_info <- readRDS("../data/pcawg_sample_tidy_info.rds")
+tidy_anno <- readRDS("../data/pcawg_tidy_anno_df.rds")
+tidy_mut <- readRDS("../data/pcawg_mut_df.rds")
+pcawg_sbs <- read_csv("../data/PCAWG/PCAWG_sigProfiler_SBS_signatures_in_samples.csv")
+pcawg_dbs <- read_csv("../data/PCAWG/PCAWG_sigProfiler_DBS_signatures_in_samples.csv")
+pcawg_id <- read_csv("../data/PCAWG/PCAWG_SigProfiler_ID_signatures_in_samples.csv")
+
+# Use signature relative contribution for analysis
+pcawg_sbs <- pcawg_sbs[, -c(1, 3)] %>%
+  dplyr::rename(sample = `Sample Names`) %>% 
+  dplyr::mutate(s = rowSums(.[, -1])) %>% 
+  dplyr::mutate_at(vars(starts_with("SBS")), ~./s) %>% 
+  dplyr::select(-s) %>% 
+  # Drop Possible sequencing artefact associated signatures
+  dplyr::select(-SBS43, -c(SBS45:SBS60))
+
+pcawg_dbs <- pcawg_dbs[, -c(1, 3)] %>%
+  dplyr::rename(sample = `Sample Names`) %>% 
+  dplyr::mutate(s = rowSums(.[, -1])) %>% 
+  dplyr::mutate_at(vars(starts_with("DBS")), ~./s) %>% 
+  dplyr::select(-s)
+
+pcawg_id <- pcawg_id[, -c(1, 3)] %>%
+  dplyr::rename(sample = `Sample Names`) %>% 
+  dplyr::mutate(s = rowSums(.[, -1])) %>% 
+  dplyr::mutate_at(vars(starts_with("ID")), ~./s) %>% 
+  dplyr::select(-s)
+```
+
+Merge data.
+
+```{r}
+df_merged <- purrr::reduce(
+  list(
+    tidy_info %>% 
+      dplyr::filter(keep) %>% 
+      dplyr::select(sample, starts_with("Abs"), starts_with("Rel")),
+    tidy_anno %>%
+      tibble::rownames_to_column("sample") %>% 
+      dplyr::mutate(
+        Tumor_Stage = dplyr::case_when(
+          Tumor_Stage == "I" ~ 1,
+          Tumor_Stage == "II" ~ 2,
+          Tumor_Stage == "III" ~ 3,
+          Tumor_Stage == "IV" ~ 4),
+        isFemale = Sex == "female",
+        isWGD = WGD_Status == "wgd",
+        isHRD = HRD_Status == "hrd"
+      ) %>% 
+      dplyr::select(-c(Sex, WGD_Status, HRD_Status)),
+    pcawg_sbs,
+    pcawg_dbs,
+    pcawg_id,
+    tidy_mut %>% dplyr::select(-cluster)
+  ),
+  dplyr::left_join,
+  by = "sample"
+) %>% 
+  dplyr::mutate_if(
+    is.logical,
+    ~ifelse(is.na(.), FALSE, .)
+  )
+
+colnames(df_merged) <- gsub("Rel_", "", colnames(df_merged))
+
+saveRDS(df_merged, file = "../data/pcawg_merged_df.rds")
+```
+
+## Association analysis for copy number signatures
+
+### Copy number signature activity self-association
+
+
+```{r fig.width=8, fig.height=7}
+show_cor(dplyr::select(df_merged, starts_with("CNS")))
+```
+
+
+We can find that most the signatures are correlated. Therefore, it will add difficulty in understanding etiologies by association analysis.
+
+
+#### Visualize with full correlation network
+
+
+```{r fig.width=8, fig.height=7}
+library(see)
+library(ggraph)
+library(correlation)
+
+cc <- dplyr::select(df_merged, starts_with("CNS")) %>% 
+  correlation(partial = FALSE, method = "spearman") %>% 
+  dplyr::rename(r = rho)
+plot(cc)
+```
+
+
+### Copy number signatures and COSMIC signatures
+
+```{r fig.height=8, fig.width=8}
+p_cosmic <- show_cor(
+  data = df_merged,
+  x_vars = colnames(df_merged)[grepl("^CNS|^SBS[0-9]+", colnames(df_merged))],
+  y_vars = colnames(df_merged)[grepl("^CNS|^SBS[0-9]+", colnames(df_merged))],
+  hc_order = FALSE,
+  test = TRUE,
+  lab_size = 2,
+  # type = "lower",
+  insig = "blank"
+)
+p_cosmic
+
+```
+
+Just show specified signatures:
+
+```{r fig.height=8, fig.width=8}
+p_cosmic2 <- show_cor(
+  data = df_merged,
+  x_vars = colnames(df_merged)[grepl("^CNS", colnames(df_merged))],
+  y_vars = c("SBS1", "SBS5",
+             "SBS2", "SBS13", "DBS11",
+             "SBS3", "ID6", "ID8",
+             "SBS4", "DBS2",
+             "SBS9",
+             "SBS18",
+             "DBS7", "ID1", "ID2",
+             "SBS12", "SBS17a", "SBS17b", "DBS6", "ID5", "ID12"),
+  hc_order = FALSE,
+  test = FALSE,
+  lab_size = 2
+)
+
+p_cosmic2
+```
+
+
+Visualize signature with similar trends with network.
+
+```{r fig.width=8, fig.height=7}
+siglist <- list(
+  c("SBS1", "SBS5"),
+  c("SBS2", "SBS13", "DBS11"),
+  c("SBS3", "ID6", "ID8"),
+  c("SBS4", "DBS2"),
+  c("SBS9"),
+  c("SBS18"),
+  c("DBS7", "ID1", "ID2"),
+  c("SBS12", "SBS17a", "SBS17b", "DBS6", "ID5", "ID12")
+)
+
+for (i in siglist) {
+  cc <- correlation(
+    dplyr::select(df_merged, starts_with("CNS")),
+    dplyr::select_at(df_merged, i),
+    partial = FALSE, method = "spearman") %>% 
+    dplyr::rename(r = rho) %>% 
+    plot()
+  print(cc)
+}
+```
+
+### Copy number signatures and smoke,UV related signatures
+Smoking related signature is a combination of SBS4 and ID3. UV related signature is a combination of SBS7a/b/c/d, DBS1 and ID13.
+```{r}
+# combination of related signatures relative activity
+df_merged <- dplyr::mutate(df_merged, UV = SBS7a+SBS7b+SBS7c+SBS7d+DBS1+ID13)
+df_merged <- dplyr::mutate(df_merged, smoke = SBS4+ID3)
+pcawg_smoke_uv <- dplyr::select(df_merged, c("sample","UV","smoke",
+                                          paste0("CNS",seq(1:14))))
+p_smoke_uv <- show_cor(
+  data = pcawg_smoke_uv,
+  x_vars = colnames(pcawg_smoke_uv)[grepl("^CNS", colnames(pcawg_smoke_uv))],
+  y_vars = colnames(pcawg_smoke_uv)[grepl("UV|smoke", colnames(pcawg_smoke_uv))],
+  hc_order = FALSE,
+  test = TRUE,
+  lab_size = 2
+)
+p_smoke_uv
+```
+
+
+### Signature clustering
+
+We can take a try to cluster signatures based on their activity association.
+
+First get the correlation data.
+
+```{r}
+p_all <- show_cor(
+  data = df_merged,
+  x_vars = colnames(df_merged)[grepl("^CNS|^SBS|^DBS|^ID[0-9]+", colnames(df_merged))],
+  y_vars = colnames(df_merged)[grepl("^CNS|^SBS|^DBS|^ID[0-9]+", colnames(df_merged))],
+  hc_order = FALSE,
+  test = FALSE,
+  lab_size = 3
+)
+```
+
+Get the correlation matrix and convert it into distance matrix.
+
+```{r}
+p_all_cor <- p_all$cor$cor_mat
+all_dist <- 1 - p_all_cor
+# Set the NA value to 2
+all_dist[is.na(all_dist)] <- 2
+```
+
+#### Only include copy number signatures
+
+```{r}
+dist_cn <- as.dist(all_dist[1:14, 1:14])
+hc_cn <- hclust(dist_cn)
+plot(hc_cn)
+```
+
+Roughly there is 3 clusters.
+
+```{r}
+factoextra::fviz_dend(hc_cn, k = 3, rect = T)
+```
+
+#### All signatures
+
+```{r fig.width=12}
+dist_all <- as.dist(all_dist)
+hc_all <- hclust(dist_all)
+plot(hc_all)
+```
+
+Here we manually set 10 clusters for better visualization.
+
+```{r fig.width=8, fig.height=8}
+factoextra::fviz_dend(
+  hc_all, k = 10, 
+  cex = 0.6, rect = F,
+  type = "circular") + theme_void() +
+  theme(
+    panel.border = element_blank()
+  )
+  # theme(
+  #   panel.background = element_rect(fill = "transparent", colour = NA),
+  #   plot.background = element_rect(fill = "transparent", colour = NA),
+  #   panel.grid = element_blank(),
+  #   panel.border = element_blank(),
+  #   plot.margin = unit(c(0, 0, 0, 0), "null"),
+  #   panel.margin = unit(c(0, 0, 0, 0), "null"),
+  #   axis.ticks = element_blank(),
+  #   axis.text = element_blank(),
+  #   axis.title = element_blank(),
+  #   axis.line = element_blank(),
+  #   legend.position = "none",
+  #   axis.ticks.length = unit(0, "null"),
+  #   axis.ticks.margin = unit(0, "null"),
+  #   legend.margin = unit(0, "null")
+  # )
+```
+
+### Association between CNS and genotype/phenotype features
+
+#### Association between CNS and continuous variables
+
+```{r fig.width=9, fig.height=8}
+p_cn_others <- show_cor(
+  data = df_merged,
+  x_vars = colnames(df_merged)[16:29],
+  y_vars = colnames(df_merged)[c(30:44, 125:127)],
+  lab_size = 3
+)
+p_cn_others
+```
+
+Visualize it with correlation network one by one.
+
+```{r fig.width=6, fig.height=5}
+var_names <- colnames(df_merged)[c(30:44, 125:127)]
+df_mut <- df_merged[, var_names] %>% 
+  dplyr::rename(
+    Telomere_Content = `Telomere_Content(log2)`
+  )
+var_names <- colnames(df_mut)
+
+#dir.create("../output/cor_network")
+
+for (i in var_names) {
+  #pdf(file.path("../output/cor_network", paste0(i, ".pdf")), width = 6, height = 5)
+  print(i)
+  correlation(
+    df_mut[, i, drop = FALSE],
+    df_merged[, colnames(df_merged)[16:29]],
+    partial = FALSE, method = "spearman") %>% 
+    dplyr::rename(r = rho) %>% 
+    plot() -> p
+  print(p)
+  #dev.off()
+}
+```
+
+#### Association between CNS and discrete variables
+
+Here we directly compare the CNS activity between different discrete variable groups.
+
+Here 3 variables including `WGD_Status`, `HRD_Status` and `Tumor_Stage` are included.
+
+```{r}
+df_ds2 <- tidy_info %>% 
+  dplyr::filter(keep) %>% 
+  dplyr::select(sample, starts_with("Abs")) %>% 
+  dplyr::mutate_if(is.numeric, ~log2(.+1)) %>% 
+  purrr::set_names(c("sample", paste0("CNS", 1:14))) %>% 
+  dplyr::left_join(
+    tidy_anno %>%
+      tibble::rownames_to_column("sample") %>% 
+      dplyr::select(sample, WGD_Status, HRD_Status, Tumor_Stage),
+    by = "sample"
+  ) %>% 
+  dplyr::mutate(Tumor_Stage = ifelse(Tumor_Stage == "Unknown", NA, Tumor_Stage))
+
+df_ds <- df_ds2 %>% 
+  tidyr::pivot_longer(
+    starts_with("CNS"),
+    names_to = "sig_name",
+    values_to = "activity"
+  )
+```
+
+
+```{r include=FALSE}
+saveRDS(df_ds2, file = "../data/pcawg_sigs_and_wgd_hrd.rds")
+```
+
+
+```{r}
+library(ggpubr)
+```
+
+
+For WGD.
+
+```{r fig.height=4, fig.width=6}
+ggboxplot(
+  df_ds, 
+  x = "sig_name", y = "activity",
+  color = "WGD_Status", 
+  palette = "jco", width = .3,
+  xlab = FALSE, ylab = "log2(Activity)",
+  outlier.size = 0.05) +
+  stat_compare_means(aes(group = WGD_Status), label = "p.signif") +
+  rotate_x_text()
+```
+
+CNS3 and CNS9 are highly associated with WGD.
+
+For HRD.
+
+```{r fig.height=4, fig.width=6}
+ggboxplot(
+  df_ds %>% 
+    dplyr::mutate(HRD_Status = factor(HRD_Status, c("no_hrd", "hrd"))), 
+  x = "sig_name", y = "activity",
+  color = "HRD_Status", 
+  palette = "jco", width = .3,
+  xlab = FALSE, ylab = "log2(Activity)",
+  outlier.size = 0.05) +
+  stat_compare_means(aes(group = HRD_Status), label = "p.signif") +
+  rotate_x_text()
+```
+
+CNS14 is highly associated with HRD status.
+
+See supplementary analysis for HRD and WGD prediction analysis.
+
+For tumor stage.
+
+```{r fig.height=4, fig.width=6}
+ggboxplot(
+  df_ds %>% dplyr::filter(!is.na(Tumor_Stage)), 
+  x = "sig_name", y = "activity",
+  color = "Tumor_Stage", 
+  palette = "jco", width = .3,
+  xlab = FALSE, ylab = "log2(Activity)",
+  outlier.size = 0.05) +
+  stat_compare_means(aes(group = Tumor_Stage), label = "p.signif",
+                     method = "anova") +
+  rotate_x_text()
+```
+
+#### Association between CNS and driver gene mutation
+
+```{r}
+asso_res <- get_sig_feature_association(
+  df_merged,
+  cols_to_sigs = paste0("CNS", 1:14),
+  cols_to_features = colnames(df_merged)[128:291],
+  method_ca = wilcox.test,
+  min_n = 0
+)
+
+asso_res_tidy = get_tidy_association(asso_res)
+```
+
+Plotting.
+
+```{r fig.width=9, fig.height=23}
+show_sig_feature_corrplot(
+  asso_res_tidy,
+  sig_orders = paste0("CNS", 1:14),
+  p_val = 0.05, 
+  breaks_count = NA, 
+  ylab = NULL,
+  xlab = NULL) + ggpubr::rotate_x_text(0, hjust = 0.5) +
+  labs(color = "Difference\nin means of\nactivity") +
+  ggpubr::rotate_x_text()
+```
+
+### Association between CNS and patients' prognosis
+
+Get tidy data fro survival analysis.
+
+```{r}
+library(ezcox)
+
+cluster_df <- readRDS("../data/pcawg_clusters.rds") %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("sample")
+
+df_surv <- tidy_info %>% 
+  dplyr::filter(keep) %>% 
+  dplyr::select(
+    sample, cancer_type, donor_survival_time, donor_vital_status, 
+    dplyr::starts_with("Abs_")
+  ) %>% dplyr::left_join(
+    cluster_df, by = "sample"
+  ) %>% 
+  na.omit() %>% 
+  dplyr::rename(
+    time = donor_survival_time,
+    status = donor_vital_status,
+    cluster = class
+  ) %>% 
+  dplyr::mutate(
+    status = ifelse(status == "deceased", 1, 0)
+  ) %>% 
+  dplyr::rename_at(vars(starts_with("Abs_")), ~sub("Abs_", "", .)) %>% 
+  dplyr::mutate_at(vars(starts_with("CNS")), ~ . / 10)
+```
+
+We divide all signature activity by 10 to explore the HR change per 10 records contributed by a signature.
+
+#### Unicox analysis for CNS
+
+Here we focus on the association between each CNS and patients' overall survival time.
+
+```{r}
+p1 <- show_forest(df_surv,
+  covariates = paste0("CNS", 1:14),
+  merge_models = TRUE, add_caption = FALSE, point_size = 2
+)
+p1
+```
+
+
+#### Multivariate cox analysis for CNS
+
+We also build a multivariate cox model to explore if all CNSs are included, which is more important?
+
+```{r}
+p2 <- show_forest(df_surv,
+  covariates = "CNS1", controls = paste0("CNS", 2:14),
+  merge_models = TRUE, add_caption = FALSE, point_size = 2
+)
+p2
+```
+
+Control the cancer types, and run Cox for each signatures:
+
+```{r}
+p3 <- show_forest(df_surv,
+  covariates = paste0("CNS", 1:14), controls = "cancer_type",
+  vars_to_show = paste0("CNS", 1:14),
+  merge_models = TRUE, add_caption = FALSE, point_size = 2, 
+)
+p3
+```
+
+Control the cancer types, and run Cox for all signatures in one model:
+
+```{r}
+p4 <- show_forest(df_surv,
+  covariates = "CNS1", controls = c(paste0("CNS", 2:14), "cancer_type"),
+  vars_to_show = paste0("CNS", 1:14),
+  merge_models = TRUE, add_caption = FALSE, point_size = 2, 
+)
+p4
+```
+
+## Signature similarity comparison between different types of signatures
+
+The similarity between signatures is a key parameter, it determines how hard it is to distinguish between signatures and the precision to assign the contribution to a signature. If you have read the paper @mauraPracticalGuideMutational2019, you may know that 2 of 3 main issues proposed by the authors are actually because of high similarity between mutational signatures:
+
+- **the ambiguous signature assignment** that occurs when different combinations of signatures can
+explain equally well the same mutational catalog.
+- **bleeding of signatures** that signatures present in only part of the set are also
+erroneously assigned to the entire set.
+
+In this section, we explore the similarity of CNSs discovered in this study and known COSMIC signatures.
+
+Load data.
+
+```{r}
+CNS <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
+SBSv2 <- get_sig_db()
+SBS <- get_sig_db("SBS")
+DBS <- get_sig_db("DBS")
+ID <- get_sig_db("ID")
+```
+
+Get signature similarity in each signature type.
+
+```{r, message=FALSE}
+sim_CNS <- get_sig_similarity(CNS, CNS)$similarity
+sim_SBSv2 <- get_sig_similarity(SBSv2$db, SBSv2$db)$similarity
+sim_SBS <- get_sig_similarity(SBS$db, SBS$db)$similarity
+sim_DBS <- get_sig_similarity(DBS$db, DBS$db)$similarity
+sim_ID <- get_sig_similarity(ID$db, ID$db)$similarity
+```
+
+Only use upper matrix to get similarity between one signature and non-self signatures.
+
+```{r}
+a = sim_CNS[upper.tri(sim_CNS)]
+b = sim_SBSv2[upper.tri(sim_SBSv2)]
+c = sim_SBS[upper.tri(sim_SBS)]
+d = sim_DBS[upper.tri(sim_DBS)]
+e = sim_ID[upper.tri(sim_ID)]
+
+
+df_sim <- dplyr::tibble(
+  sig_type = rep(c("CNS", "SBSv2", "SBS", "DBS", "ID"),
+                 c(length(a), length(b), length(c), length(d), length(e))),
+  similarity = c(a, b, c, d, e)
+)
+```
+
+See header rows:
+
+```{r}
+head(df_sim)
+```
+
+Let's visualize it and use 'CNS' as reference group to run statistical test ('wilcox.test' method).
+
+```{r fig.width=4, fig.height=3}
+library(ggpubr)
+
+ggboxplot(df_sim, 
+          x = "sig_type", y = "similarity",
+          color = "sig_type",
+          xlab = FALSE,
+          ylab = "Similarity between signatures",
+          legend = "none",
+          palette = "jco",
+          width = 0.3,
+          outlier.size = 0.05)+
+  #stat_compare_means(method = "anova") +
+  stat_compare_means(label = "p.signif", method = "wilcox.test",
+                     ref.group = "CNS")   
+```
+We can see that signature type CNS has lowest similarity level and CNS signatures are not likely similar to others. CNS has much lower similarity level than all other signature types except DBS.
+
+## Data summary and inference of signature etiologies
+
+See our manuscript for the inference.
+
+

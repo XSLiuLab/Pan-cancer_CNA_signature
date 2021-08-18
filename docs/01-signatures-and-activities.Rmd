@@ -1,0 +1,351 @@
+---
+title: "PART 1: Copy number signature identification and activity attribution"
+author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-01, include=FALSE}
+library(knitr)
+library(rmdformats)
+library(sigminer)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+In this part, how the copy number signatures are identified and how the corresponding signature activities (a.k.a. exposures) are attributed are described in sections below. **The 176 component classification for PCAWG data is our main focus.**
+
+*The work of this part has been done by either setting root path of the project repository as work directory or moving data and code to the same path (see below). Therefore, keep in mind the work directory/data path should be properly set if you are interested in reproducing the analysis procedure.*
+
+*The signature identification work cannot be done in local machine because high intensity calculations are required, we used HPC of ShanghaiTech University to submit computation jobs to HPC clusters. Input data files, R scripts and PBS job scripts are stored in a same path, the structure can be viewed as:*
+
+```sh
+.
+├── call_pcawg_sp.R
+├── pcawg_cn_tally_X.rds
+├── pcawg.pbs
+```
+
+## Copy number signature identification
+
+We use the gold-standard tool [SigProfiler v1.0.17](https://github.com/AlexandrovLab/SigProfilerExtractor) to identify Pan-Cancer copy number signatures and their activities in each sample. The SigProfiler has been successfully applied to many studies, especially in @pcawgmutationalsignaturesworkinggroupRepertoireMutationalSignatures2020 for multiple types of signatures.
+
+### Apply to PCAWG catalog matrix
+
+PBS file `pcawg.pbs` content:
+
+```sh
+#PBS -l walltime=1000:00:00
+#PBS -l nodes=1:ppn=36
+#PBS -S /bin/bash
+#PBS -l mem=20gb
+#PBS -j oe
+#PBS -M w_shixiang@163.com
+#PBS -q pub_fast
+
+# Please set PBS arguments above
+cd /public/home/wangshx/wangshx/PCAWG-TCGA
+module load apps/R/3.6.1
+
+# Following are commands/scripts you want to run
+# If you do not know how to set this, please check README.md file 
+Rscript call_pcawg_sp.R
+```
+
+We developed a SigProfiler caller in our R package [sigminer] and run SigProfiler with default settings for most of parameters.
+
+R script `call_pcawg_sp.R` content:
+
+```{r, eval=FALSE}
+library(sigminer)
+
+tally_X <- readRDS("pcawg_cn_tally_X.rds")
+
+sigprofiler_extract(tally_X$nmf_matrix, 
+                    output = "PCAWG_CN176X", 
+                    range = 2:30, 
+                    nrun = 100,
+                    init_method = "random",
+                    is_exome = FALSE,
+                    use_conda = TRUE)
+```
+
+All metadata info and detail settings reported by SigProfiler are copied below:
+
+```
+THIS FILE CONTAINS THE METADATA ABOUT SYSTEM AND RUNTIME
+
+
+-------System Info-------
+Operating System Name: Linux
+Nodename: node34
+Release: 3.10.0-693.el7.x86_64
+Version: #1 SMP Tue Aug 22 21:09:27 UTC 2017
+
+-------Python and Package Versions------- 
+Python Version: 3.8.5
+Sigproextractor Version: 1.0.17
+SigprofilerPlotting Version: 1.1.8
+SigprofilerMatrixGenerator Version: 1.1.20
+Pandas version: 1.1.2
+Numpy version: 1.19.2
+Scipy version: 1.5.2
+Scikit-learn version: 0.23.2
+
+--------------EXECUTION PARAMETERS--------------
+INPUT DATA
+	input_type: matrix
+	output: TCGA_CN176X
+	input_data: /tmp/RtmphYcBmk/dir852158ab0364/sigprofiler_input.txt
+	reference_genome: GRCh37
+	context_types: SBS176
+	exome: False
+NMF REPLICATES
+	minimum_signatures: 2
+	maximum_signatures: 30
+	NMF_replicates: 100
+NMF ENGINE
+	NMF_init: random
+	precision: single
+	matrix_normalization: gmm
+	resample: True
+	seeds: random
+	min_NMF_iterations: 10,000
+	max_NMF_iterations: 1,000,000
+	NMF_test_conv: 10,000
+	NMF_tolerance: 1e-15
+CLUSTERING
+	clustering_distance: cosine
+EXECUTION
+	cpu: 36; Maximum number of CPU is 36
+	gpu: False
+Solution Estimation
+	stability: 0.8
+	min_stability: 0.2
+	combined_stability: 1.0
+COSMIC MATCH
+	opportunity_genome: GRCh37
+	nnls_add_penalty: 0.05
+	nnls_remove_penalty: 0.01
+	initial_remove_penalty: 0.05
+	de_novo_fit_penalty: 0.02
+	refit_denovo_signatures: False
+
+-------Analysis Progress------- 
+[2020-11-29 17:39:12] Analysis started: 
+
+##################################
+
+[2020-11-29 17:39:18] Analysis started for SBS176. Matrix size [176 rows x 10851 columns]
+
+[2020-11-29 17:39:18] Normalization GMM with cutoff value set at 17600
+
+[2020-11-29 19:12:03] SBS176 de novo extraction completed for a total of 2 signatures! 
+Execution time:1:32:45
+
+[2020-11-29 23:58:10] SBS176 de novo extraction completed for a total of 3 signatures! 
+Execution time:4:46:06
+
+[2020-11-30 08:32:21] SBS176 de novo extraction completed for a total of 4 signatures! 
+Execution time:8:34:11
+
+[2020-11-30 19:51:18] SBS176 de novo extraction completed for a total of 5 signatures! 
+Execution time:11:18:56
+
+[2020-12-01 07:10:18] SBS176 de novo extraction completed for a total of 6 signatures! 
+Execution time:11:18:59
+
+[2020-12-01 21:14:24] SBS176 de novo extraction completed for a total of 7 signatures! 
+Execution time:14:04:06
+
+[2020-12-02 15:48:43] SBS176 de novo extraction completed for a total of 8 signatures! 
+Execution time:18:34:19
+
+[2020-12-03 12:53:25] SBS176 de novo extraction completed for a total of 9 signatures! 
+Execution time:21:04:41
+
+[2020-12-04 11:25:25] SBS176 de novo extraction completed for a total of 10 signatures! 
+Execution time:22:31:59
+
+[2020-12-05 10:20:15] SBS176 de novo extraction completed for a total of 11 signatures! 
+Execution time:22:54:50
+
+[2020-12-06 11:36:03] SBS176 de novo extraction completed for a total of 12 signatures! 
+Execution time:1 day, 1:15:48
+
+[2020-12-07 14:43:31] SBS176 de novo extraction completed for a total of 13 signatures! 
+Execution time:1 day, 3:07:28
+
+[2020-12-09 01:15:22] SBS176 de novo extraction completed for a total of 14 signatures! 
+Execution time:1 day, 10:31:50
+
+[2020-12-10 08:02:39] SBS176 de novo extraction completed for a total of 15 signatures! 
+Execution time:1 day, 6:47:17
+
+[2020-12-11 16:05:31] SBS176 de novo extraction completed for a total of 16 signatures! 
+Execution time:1 day, 8:02:51
+
+[2020-12-13 02:19:40] SBS176 de novo extraction completed for a total of 17 signatures! 
+Execution time:1 day, 10:14:09
+
+[2020-12-14 14:56:13] SBS176 de novo extraction completed for a total of 18 signatures! 
+Execution time:1 day, 12:36:32
+
+[2020-12-16 02:39:41] SBS176 de novo extraction completed for a total of 19 signatures! 
+Execution time:1 day, 11:43:27
+
+[2020-12-18 02:54:09] SBS176 de novo extraction completed for a total of 20 signatures! 
+Execution time:2 days, 0:14:28
+
+[2020-12-19 20:20:57] SBS176 de novo extraction completed for a total of 21 signatures! 
+Execution time:1 day, 17:26:47
+
+[2020-12-21 19:30:07] SBS176 de novo extraction completed for a total of 22 signatures! 
+Execution time:1 day, 23:09:10
+
+[2020-12-24 00:44:41] SBS176 de novo extraction completed for a total of 23 signatures! 
+Execution time:2 days, 5:14:34
+
+[2020-12-25 19:03:07] SBS176 de novo extraction completed for a total of 24 signatures! 
+Execution time:1 day, 18:18:25
+
+[2020-12-27 07:50:06] SBS176 de novo extraction completed for a total of 25 signatures! 
+Execution time:1 day, 12:46:58
+
+[2020-12-29 04:40:22] SBS176 de novo extraction completed for a total of 26 signatures! 
+Execution time:1 day, 20:50:16
+
+[2020-12-30 12:35:04] SBS176 de novo extraction completed for a total of 27 signatures! 
+Execution time:1 day, 7:54:41
+
+[2020-12-31 19:04:04] SBS176 de novo extraction completed for a total of 28 signatures! 
+Execution time:1 day, 6:29:00
+
+[2021-01-02 04:50:07] SBS176 de novo extraction completed for a total of 29 signatures! 
+Execution time:1 day, 9:46:02
+
+[2021-01-03 14:15:32] SBS176 de novo extraction completed for a total of 30 signatures! 
+Execution time:1 day, 9:25:25
+
+[2021-01-03 14:48:21] Analysis ended: 
+
+-------Job Status------- 
+Analysis of mutational signatures completed successfully! 
+Total execution time: 34 days, 21:09:09 
+Results can be found in:  TCGA_CN176X  folder
+```
+
+### Signature number determination
+
+First, load the results.
+
+```{r eval=FALSE}
+library(sigminer)
+SP_PCAWG <- sigprofiler_import("../SP/PCAWG_CN176X/", order_by_expo = TRUE, type = "all")
+saveRDS(SP_PCAWG, file = "../data/pcawg_cn_solutions_sp.rds")
+```
+
+Then we visualize the signature number survey.
+
+```{r}
+SP_PCAWG <- readRDS("../data/pcawg_cn_solutions_sp.rds")
+```
+
+```{r fig.width=9, fig.height=5}
+show_sig_number_survey(
+  SP_PCAWG$all_stats %>% 
+    dplyr::rename(
+      s = `Stability (Avg Silhouette)`,
+      e = `Mean Cosine Distance`
+    ) %>% 
+    dplyr::mutate(
+      SignatureNumber = as.integer(gsub("[^0-9]", "", SignatureNumber))
+    ),
+  x = "SignatureNumber",
+  left_y = "s", right_y = "e",
+  left_name = "Stability (Avg Silhouette)",
+  right_name = "Mean Cosine Distance",
+  highlight = 14)
+```
+
+We pick up `14` signatures for PCAWG data due to its relatively high stability and low distance.
+
+The `Signature` object with 14 signature profiles are stored for further analysis.
+
+To better describe the signatures, we will rename them. The names are ordered by mean activity in samples.
+
+```{r}
+pcawg_sigs <- SP_PCAWG$solution_list$S14
+apply(pcawg_sigs$Exposure, 1, mean)
+```
+
+```{r}
+sig_names(pcawg_sigs)
+
+colnames(pcawg_sigs$Signature) <- colnames(pcawg_sigs$Signature.norm) <- rownames(pcawg_sigs$Exposure) <- rownames(pcawg_sigs$Exposure.norm) <- pcawg_sigs$Stats$signatures$Signatures <- paste0("CNS", 1:14)
+
+sig_names(pcawg_sigs)
+```
+
+
+```{r, eval=FALSE}
+saveRDS(pcawg_sigs, file = "../data/pcawg_cn_sigs_CN176_signature.rds")
+```
+
+## Sample copy number catalog reconstruction
+
+Here we try know how well each sample catalog profile can be constructed from the signature combination.
+
+Firstly we get the activity data.
+
+```{r}
+pcawg_sigs <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
+pcawg_act <- list(
+  absolute = get_sig_exposure(SP_PCAWG$solution_list$S14, type = "absolute"),
+  relative = get_sig_exposure(SP_PCAWG$solution_list$S14, type = "relative", rel_threshold = 0),
+  similarity = pcawg_sigs$Stats$samples[, .(Samples, `Cosine Similarity`)]
+)
+
+colnames(pcawg_act$absolute)[-1] <- colnames(pcawg_act$relative)[-1] <- paste0("CNS", 1:14) 
+colnames(pcawg_act$similarity) <- c("sample", "similarity")
+
+saveRDS(pcawg_act, file = "../data/pcawg_cn_sigs_CN176_activity.rds")
+```
+
+Check the stat summary of reconstructed Cosine similarity.
+
+```{r}
+summary(pcawg_act$similarity$similarity)
+```
+
+Visualize with plot
+
+```{r fig.height=3.5, fig.width=5}
+hist(pcawg_act$similarity$similarity, breaks = 100, xlab = "Reconstructed similarity", main = NA)
+```
+
+Most of samples are well constructed. Next we will use a similarity threshold `0.75` to filter out some samples for removing their effects on the following analysis.
+
+```{r include=FALSE}
+rm(list = ls())
+```
+

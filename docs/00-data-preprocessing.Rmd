@@ -1,0 +1,282 @@
+---
+title: "PART 0: Data preprocessing"
+author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-00, include=FALSE}
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+In this part, raw data are collected from databases or papers and the core pre-processing steps are described in sections below.
+
+*The pre-processing work has been done by setting root path of the project repository as work directory. Therefore, keep in mind the work directory should be properly set if you are interested in reproducing the pre-processing procedure.*
+
+## Prepare PCAWG datasets
+
+We download PCAWG phenotype and copy number data from [UCSC Xena](https://xenabrowser.net/datapages/) and save them to local machine with R format.
+
+```{r, eval=FALSE}
+dir.create("Xena")
+
+# Phenotype (Specimen Centric) -----------------------------------------------
+
+library(UCSCXenaTools)
+pcawg_phenotype <- XenaData %>%
+  dplyr::filter(XenaHostNames == "pcawgHub") %>%
+  XenaScan("phenotype") %>%
+  XenaScan("specimen centric") %>%
+  XenaGenerate() %>%
+  XenaQuery()
+pcawg_phenotype <- pcawg_phenotype %>%
+  XenaDownload(destdir = "Xena", trans_slash = TRUE)
+
+phenotype_list <- XenaPrepare(pcawg_phenotype)
+pcawg_samp_info_sp <- phenotype_list[1:4]
+
+saveRDS(pcawg_samp_info_sp, file = "data/pcawg_samp_info_sp.rds")
+
+# PCAWG (Specimen Centric) ------------------------------------------------
+
+download.file(
+  "https://pcawg.xenahubs.net/download/20170119_final_consensus_copynumber_sp.gz",
+  "Xena/pcawg_copynumber_sp.gz"
+)
+
+pcawg_cn <- data.table::fread("Xena/pcawg_copynumber_sp.gz")
+pcawg_samp_info_sp <- readRDS("data/pcawg_samp_info_sp.rds")
+
+sex_dt <- pcawg_samp_info_sp$pcawg_donor_clinical_August2016_v9_sp %>%
+  dplyr::select(xena_sample, donor_sex) %>%
+  purrr::set_names(c("sample", "sex")) %>%
+  data.table::as.data.table()
+
+saveRDS(sex_dt, file = "data/pcawg_sex_sp.rds")
+
+pcawg_cn <- pcawg_cn[!is.na(total_cn)]
+pcawg_cn$value <- NULL
+pcawg_cn <- pcawg_cn[, c(1:5, 7)]
+colnames(pcawg_cn)[1:5] <- c("sample", "Chromosome", "Start.bp", "End.bp", "modal_cn")
+
+saveRDS(pcawg_cn, file = "data/pcawg_copynumber_sp.rds")
+
+# LOH ---------------------------------------------------------------------
+
+pcawg_cn <- readRDS("data/pcawg_copynumber_sp.rds")
+
+pcawg_loh <- pcawg_cn %>%
+  dplyr::filter(Chromosome %in% as.character(1:22)) %>%
+  dplyr::mutate(len = End.bp - Start.bp + 1) %>%
+  dplyr::group_by(sample) %>%
+  dplyr::summarise(
+    n_LOH = sum(minor_cn == 0 & modal_cn > 0 & len >= 1e4)
+  ) %>%
+  setNames(c("sample", "n_LOH")) %>%
+  data.table::as.data.table()
+
+saveRDS(pcawg_loh, file = "data/pcawg_loh.rds")
+
+```
+
+## Generate PCAWG sample-by-component matrix
+
+We then read the copy number data and transform it into a `CopyNumber` object with R package sigminer. Then `sig_tally()` is used to generate the matrix for NMF decomposition.
+
+```{r, eval=FALSE}
+library(sigminer)
+
+# Only focus autosomes, suggested by Prof. Liu
+pcawg_cn <- readRDS("data/pcawg_copynumber_sp.rds")
+table(pcawg_cn$Chromosome)
+pcawg_cn <- pcawg_cn[!Chromosome %in% c("X", "Y")]
+cn_obj <- read_copynumber(pcawg_cn,
+                          add_loh = TRUE,
+                          loh_min_len = 1e4,
+                          loh_min_frac = 0.05,
+                          max_copynumber = 1000L,
+                          genome_build = "hg19",
+                          complement = FALSE,
+                          genome_measure = "called")
+saveRDS(cn_obj, file = "data/pcawg_cn_obj.rds")
+
+# Tally -------------------------------------------------------------------
+library(sigminer)
+cn_obj <- readRDS("data/pcawg_cn_obj.rds")
+table(cn_obj@data$chromosome)
+
+tally_X <- sig_tally(cn_obj,
+                     method = "X",
+                     add_loh = TRUE,
+                     cores = 10)
+saveRDS(tally_X, file = "data/pcawg_cn_tally_X.rds")
+str(tally_X$all_matrices, max.level = 1)
+
+p <- show_catalogue(tally_X, mode = "copynumber", method = "X",
+                    style = "cosmic", y_tr = function(x) log10(x + 1),
+                    y_lab = "log10(count +1)")
+p
+ggplot2::ggsave("output/pcawg_catalogs_tally_X.pdf", plot = p, width = 16, height = 2.5)
+
+head(sort(colSums(tally_X$nmf_matrix)), n = 50)
+
+## classes without LOH labels
+tally_X_noLOH <- sig_tally(cn_obj,
+                           method = "X",
+                           add_loh = FALSE,
+                           cores = 10)
+saveRDS(tally_X_noLOH$all_matrices, file = "data/pcawg_cn_tally_X_noLOH.rds")
+str(tally_X_noLOH$all_matrices, max.level = 1)
+
+p <- show_catalogue(tally_X_noLOH, mode = "copynumber", method = "X",
+                    style = "cosmic", y_tr = function(x) log10(x + 1),
+                    y_lab = "log10(count +1)")
+p
+ggplot2::ggsave("output/pcawg_catalogs_tally_X_noLOH.pdf", plot = p, width = 16, height = 2.5)
+```
+
+The generated catalog profiles for LOH version and non-LOH version component classification can be viewed by the following link:
+
+- [pcawg_catalogs_tally_X.pdf](https://github.com/ShixiangWang/CNX/blob/master/output/pcawg_catalogs_tally_X.pdf) - 176 components
+- [pcawg_catalogs_tally_X_noLOH.pdf](https://github.com/ShixiangWang/CNX/blob/master/output/pcawg_catalogs_tally_X_noLOH.pdf) - 136 components
+
+## Prepare TCGA datasets
+
+TCGA allele-specific copy number data are downloaded from [GDC portal](https://portal.gdc.cancer.gov/) and transformed into R format by Huimin Li.
+
+The data is go further checked and cleaned by Shixiang.
+
+```{r, eval=FALSE}
+# Huimin collected TCGA data from GDC portal
+# and generate file with format needed by sigminer
+# Here I will firstly further clean up the data
+
+library(data.table)
+x = readRDS("data/TCGA/datamicopy.rds")
+setDT(x)
+
+colnames(x)[6] = "minor_cn"
+head(x)
+x[, sample := substr(sample, 1, 15)]
+saveRDS(x, file = "data/TCGA/tcga_cn.rds")
+
+rm(list = ls())
+```
+
+TCGA phenotype data is downloaded from UCSC Xena.
+
+```{r, eval=FALSE}
+download.file("https://pancanatlas.xenahubs.net/download/Survival_SupplementalTable_S1_20171025_xena_sp.gz",
+              "Xena/Survival_SupplementalTable_S1_20171025_xena_sp.gz")
+
+tcga_cli <- data.table::fread("Xena/Survival_SupplementalTable_S1_20171025_xena_sp.gz")
+table(tcga_cli$`cancer type abbreviation`)
+saveRDS(tcga_cli, file = "data/TCGA/tcga_cli.rds")
+```
+
+## Generate TCGA sample-by-component matrix
+
+Similar to PCAWG, TCGA matrices are also generated.
+
+```{r, eval=FALSE}
+library(sigminer)
+
+# Only focus autosomes
+tcga_cn = readRDS("data/TCGA/tcga_cn.rds")
+table(tcga_cn$chromosome)
+tcga_cn = tcga_cn[!chromosome %in% c("chrX", "chrY")]
+cn_obj = read_copynumber(
+  tcga_cn,
+  seg_cols = c("chromosome", "start", "end", "segVal"),
+  add_loh = TRUE,
+  loh_min_len = 1e4,
+  loh_min_frac = 0.05,
+  max_copynumber = 1000L,
+  genome_build = "hg38",
+  complement = FALSE,
+  genome_measure = "called"
+)
+saveRDS(cn_obj, file = "data/TCGA/tcga_cn_obj.rds")
+
+# Tally step
+# Generate the counting matrices
+# Same as what have done for PCAWG dataset
+library(sigminer)
+cn_obj = readRDS("data/tcga_cn_obj.rds")
+table(cn_obj@data$chromosome)
+
+tally_X <- sig_tally(cn_obj,
+                     method = "X",
+                     add_loh = TRUE,
+                     cores = 10)
+saveRDS(tally_X, file = "data/TCGA/tcga_cn_tally_X.rds")
+
+
+p <- show_catalogue(tally_X, mode = "copynumber", method = "X",
+                    style = "cosmic", y_tr = function(x) log10(x + 1),
+                    y_lab = "log10(count +1)")
+p
+ggplot2::ggsave("output/tcga_catalogs_tally_X.pdf", plot = p, width = 16, height = 2.5)
+
+head(sort(colSums(tally_X$nmf_matrix)), n = 50)
+
+## classes without LOH labels
+tally_X_noLOH <- sig_tally(cn_obj,
+                           method = "X",
+                           add_loh = FALSE,
+                           cores = 10)
+saveRDS(tally_X_noLOH$all_matrices, file = "data/TCGA/tcga_cn_tally_X_noLOH.rds")
+str(tally_X_noLOH$all_matrices, max.level = 1)
+
+p <- show_catalogue(tally_X_noLOH, mode = "copynumber", method = "X",
+                    style = "cosmic", y_tr = function(x) log10(x + 1),
+                    y_lab = "log10(count +1)")
+p
+ggplot2::ggsave("output/tcga_catalogs_tally_X_noLOH.pdf", plot = p, width = 16, height = 2.5)
+```
+
+The generated catalog profiles for LOH version and non-LOH version component classification can be viewed by the following link:
+
+- [tcga_catalogs_tally_X.pdf](https://github.com/ShixiangWang/CNX/blob/master/output/tcga_catalogs_tally_X.pdf) - 176 components
+- [tcga_catalogs_tally_X_noLOH.pdf](https://github.com/ShixiangWang/CNX/blob/master/output/tcga_catalogs_tally_X_noLOH.pdf) - 136 components
+
+## PCAWG genotype/phenotype data type and source
+
+If no references described, PCAWG genotype/phenotype data used in this study are obtained from UCSC Xena database, the original data source is [PCAWG paper collection](https://www.nature.com/collections/afdejfafdb) published in early 2020.
+
+- Consensus copy number ([page in UCSC Xena](https://xenabrowser.net/datapages/?dataset=20170119_final_consensus_copynumber_sp&host=https%3A%2F%2Fpcawg.xenahubs.net&removeHub=https%3A%2F%2Fxena.treehouse.gi.ucsc.edu%3A443)).
+- General phenotype information ([page in UCSC Xena](https://xenabrowser.net/datapages/?cohort=PCAWG%20(specimen%20centric)&removeHub=https%3A%2F%2Fxena.treehouse.gi.ucsc.edu%3A443)).
+- Tumor purity & ploidy & WGD status ([page in UCSC Xena](https://xenabrowser.net/datapages/?dataset=consensus.20170217.purity.ploidy_sp&host=https%3A%2F%2Fpcawg.xenahubs.net&removeHub=https%3A%2F%2Fxena.treehouse.gi.ucsc.edu%3A443)).
+- Gene level fusion events ([page in UCSC Xena](https://xenabrowser.net/datapages/?dataset=pcawg3_fusions_PKU_EBI.gene_centric.sp.xena&host=https%3A%2F%2Fpcawg.xenahubs.net&removeHub=https%3A%2F%2Fxena.treehouse.gi.ucsc.edu%3A443)).
+- LOH number, calculated from copy number data, defined as number of copy number segments passing the following criterion:
+  - Minor copy number equals to `0`.
+  - Total copy number is greater than `0`.
+  - Segment length is greater than `10Kb`.
+- HRD status by CHORD framework, the raw data is available at @nguyenPancancerLandscapeHomologous2020, cleaned by Huimin Li.
+- Chromothripsis detected by ShatterSeek, the data is obtained from <http://compbio.med.harvard.edu/chromothripsis/>.
+- Amplicons (including ecDNA) detected by AmpliconArchitect, obtained from @kimExtrachromosomalDNAAssociated2020.
+- Telomere content detected by TelomereHunter, obtained from @pcawg-structuralvariationworkinggroupGenomicFootprintsActivated2020.
+- APOBEC mutations ([page in UCSC Xena](https://xenabrowser.net/datapages/?dataset=MAF_Aug31_2016_sorted_A3A_A3B_comparePlus.sp&host=https%3A%2F%2Fpcawg.xenahubs.net&removeHub=https%3A%2F%2Fxena.treehouse.gi.ucsc.edu%3A443)).
+

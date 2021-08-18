@@ -1,0 +1,524 @@
+---
+title: "PART 3: Pan-Cancer signature analysis"
+author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-03, include=FALSE}
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+In this part, we will analyze copy number signatures across cancer types and show the landscape.
+
+## Signature number and contribution in each cancer type
+
+Load tidy cancer type annotation data.
+
+```{r}
+library(sigminer)
+library(tidyverse)
+
+pcawg_types <- readRDS("../data/pcawg_type_info.rds")
+```
+
+Load signature activity data.
+
+```{r}
+pcawg_activity <- readRDS("../data/pcawg_cn_sigs_CN176_activity.rds")
+```
+
+Combine the cancer type annotation and activity data and only keep samples with good reconstruction (`>0.75` cosine similarity).
+
+```{r}
+keep_samps <- pcawg_activity$similarity[similarity > 0.75]$sample
+
+df_abs <- merge(pcawg_activity$absolute[sample %in% keep_samps], pcawg_types, by = "sample")
+df_rel <- merge(pcawg_activity$relative[sample %in% keep_samps], pcawg_types, by = "sample")
+```
+
+### Signature activity in each cancer type
+
+Here we draw distribution of a signature across cancer types.
+
+```{r fig.width=12, fig.height=6}
+show_group_distribution(
+  df_abs, 
+  gvar = "cancer_type",
+  dvar = "CNS1",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  point_size = 0.3
+)
+```
+
+We have many signatures here, so we output them to PDF files.
+
+```{r, eval=if (exists(".regenerate_pdfs")) .regenerate_pdfs else FALSE}
+dir.create("../output/cancer-type-dist", showWarnings = F)
+signames <- paste0("CNS", 1:14)
+for (i in signames) {
+  pxx <- show_group_distribution(df_abs, gvar = "cancer_type",
+                                 dvar = i, order_by_fun = FALSE, 
+                                 ylab = i,
+                                 g_angle = 90, point_size = 0.3)
+  ggplot2::ggsave(file.path("../output/cancer-type-dist/", paste0("Absolute_activity_", i, ".pdf")),
+                  plot = pxx, width = 12, height = 6)
+  pxx <- show_group_distribution(df_rel, gvar = "cancer_type",
+                                 dvar = i, order_by_fun = FALSE,
+                                 ylab = i,
+                                 g_angle = 90, point_size = 0.3)
+  ggplot2::ggsave(file.path("../output/cancer-type-dist/", paste0("Relative_activity_", i, ".pdf")),
+                  plot = pxx, width = 12, height = 6)
+}
+rm(pxx)
+```
+
+### Signature landscape
+
+Define a signature which is detectable if this signature contribute `>5%` exposures and contribute `>15 segments` in a sample.
+
+```{r}
+df <- df_rel %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("CNS")), ~ ifelse(. > 0.05, 1L, 0L)) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("CNS"),
+    names_to = "sig", values_to = "detectable"
+  )
+
+df2 <- df_rel %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("CNS"),
+    names_to = "sig", values_to = "expo"
+  )
+
+df3 <- df_abs %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("CNS")), ~ ifelse(. > 15, 1L, 0L)) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("CNS"),
+    names_to = "sig", values_to = "segment_detect"
+  )
+
+df <- dplyr::left_join(df, df2,
+                       by = c("sample", "cancer_type", "sig")
+) %>% dplyr::left_join(., df3, by = c("sample", "cancer_type", "sig"))
+
+
+df_type <- df %>%
+  dplyr::group_by(cancer_type, sig) %>%
+  dplyr::summarise(
+    freq = sum(segment_detect), # directly use count
+    expo = median(expo[detectable == 1]),
+    n = n(),
+    label = paste0(unique(cancer_type), " (n=", n, ")"),
+    .groups = "drop"
+  ) %>%
+  dplyr::group_by(cancer_type) %>%
+  dplyr::mutate(pro = freq/sum(freq))
+
+df_type$expo <- ifelse(df_type$freq == 0, 0,df_type$expo)
+
+mps <- unique(df_type[, c("cancer_type", "label")])
+mpss <- mps$label
+names(mpss) <- mps$cancer_type
+```
+
+```{r}
+summary(df_type$freq)
+```
+
+Show copy number signature landscape.
+
+```{r, fig.width=12, fig.height=6}
+library(cowplot)
+
+p <- ggplot(
+  df_type,
+  aes(x = cancer_type, y = factor(sig, levels = paste0("CNS", 1:14)))
+) +
+  geom_point(aes(size = pro, color = expo)) +
+  theme_cowplot() +
+  ggpubr::rotate_x_text(60) +
+  scale_x_discrete(breaks = mps$cancer_type, labels = mps$label) +
+  scale_size_continuous(
+    limits = c(0.1, 1),
+    breaks = c(0, 0.25, 0.5, 0.75, 1)
+  ) +
+  scale_color_stepsn(
+    colors = viridis::viridis(5, direction = -1),
+    breaks = c(0, 0.25, 0.5, 0.75, 1)
+  ) +
+  labs(
+    x = NULL, y = "Copy number signatures",
+    color = "Median activity\ndue to signature",
+    size = "Proportion of tumors \nwith the signatures"
+  )
+p
+
+```
+### Signature number distribution
+
+For most of cancer types, they have similar signature constitution (most of copy number signatures available in them). However, we need to further check that if many tumors have so many signatures activated.
+
+
+```{r}
+pcawg_cns <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds") %>% 
+  .[["Exposure.norm"]] %>%
+  t() %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(., var = "sample") 
+pcawg_sbs <- read_csv("../data/PCAWG/PCAWG_sigProfiler_SBS_signatures_in_samples.csv")
+pcawg_dbs <- read_csv("../data/PCAWG/PCAWG_sigProfiler_DBS_signatures_in_samples.csv")
+pcawg_id <- read_csv("../data/PCAWG/PCAWG_SigProfiler_ID_signatures_in_samples.csv")
+
+# Use signature relative contribution for analysis
+pcawg_sbs <- pcawg_sbs[, -c(1, 3)] %>%
+  dplyr::rename(sample = `Sample Names`) %>%
+  dplyr::select(-SBS43, -c(SBS45:SBS60))
+
+pcawg_dbs <- pcawg_dbs[, -c(1, 3)] %>%
+  dplyr::rename(sample = `Sample Names`) 
+
+pcawg_id <- pcawg_id[, -c(1, 3)] %>%
+  dplyr::rename(sample = `Sample Names`) 
+
+df_cns <- df_rel %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("CNS")), ~ ifelse(. > 0.05, 1L, 0L)) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("CNS"),
+    names_to = "sig", values_to = "detectable"
+  )
+
+df2_cns <- df_rel %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("CNS"),
+    names_to = "sig", values_to = "expo"
+  )
+
+df3_cns <- df_abs %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("CNS")), ~ ifelse(. > 15, 1L, 0L)) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("CNS"),
+    names_to = "sig", values_to = "segment_detect"
+  )
+
+df_cns <- dplyr::left_join(df_cns, df2_cns,
+                       by = c("sample", "cancer_type", "sig")
+) %>% dplyr::left_join(., df3_cns, by = c("sample", "cancer_type", "sig"))
+
+
+df_type_cns <- df_cns %>%
+  dplyr::group_by(cancer_type, sig) %>%
+  dplyr::summarise(
+    freq = sum(segment_detect), # directly use count
+    expo = median(expo[detectable == 1]),
+    n = n(),
+    label = paste0(unique(cancer_type), " (n=", n, ")"),
+    .groups = "drop"
+  )
+
+mps <- unique(df_type_cns[, c("cancer_type", "label")])
+mpss <- mps$label
+names(mpss) <- mps$cancer_type
+
+df_detc_cns <- df_cns %>%
+  dplyr::group_by(cancer_type, sample) %>%
+  dplyr::summarise(
+    signumber = sum(segment_detect),
+    .groups = "drop"
+  )
+
+num_CNS <- df_detc_cns$signumber
+
+# SBS
+pcawg_sbs2 <- dplyr::inner_join(pcawg_sbs, 
+                                df_rel[,c("sample","cancer_type")],
+                                by = "sample")
+
+df_sbs <- pcawg_sbs2 %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("SBS")), ~ ifelse(. > 0, 1L, 0L)) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("SBS"),
+    names_to = "sig", values_to = "detectable"
+  )
+
+df2_sbs <- pcawg_sbs2 %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("SBS"),
+    names_to = "sig", values_to = "expo"
+  )
+
+df_sbs <- dplyr::left_join(df_sbs, df2_sbs,
+                           by = c("sample", "cancer_type", "sig")
+)
+
+df_type_sbs <- df_sbs %>%
+  dplyr::group_by(cancer_type, sig) %>%
+  dplyr::summarise(
+    freq = sum(detectable), # directly use count
+    expo = median(expo[detectable == 1]),
+    n = n(),
+    label = paste0(unique(cancer_type), " (n=", n, ")"),
+    .groups = "drop"
+  )
+
+
+df_detc_sbs <- df_sbs %>%
+  dplyr::group_by(cancer_type, sample) %>%
+  dplyr::summarise(
+    signumber = sum(detectable),
+    .groups = "drop"
+  )
+num_SBS <- df_detc_sbs$signumber
+
+# DBS
+pcawg_dbs2 <- dplyr::inner_join(pcawg_dbs, 
+                                df_rel[,c("sample","cancer_type")],
+                                by = "sample")
+
+df_dbs <- pcawg_dbs2 %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("DBS")), ~ ifelse(. > 0, 1L, 0L)) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("DBS"),
+    names_to = "sig", values_to = "detectable"
+  )
+
+df2_dbs <- pcawg_dbs2 %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("DBS"),
+    names_to = "sig", values_to = "expo"
+  )
+
+df_dbs <- dplyr::left_join(df_dbs, df2_dbs,
+                           by = c("sample", "cancer_type", "sig")
+)
+
+df_type_dbs <- df_dbs %>%
+  dplyr::group_by(cancer_type, sig) %>%
+  dplyr::summarise(
+    freq = sum(detectable), # directly use count
+    expo = median(expo[detectable == 1]),
+    n = n(),
+    label = paste0(unique(cancer_type), " (n=", n, ")"),
+    .groups = "drop"
+  )
+
+
+df_detc_dbs <- df_dbs %>%
+  dplyr::group_by(cancer_type, sample) %>%
+  dplyr::summarise(
+    signumber = sum(detectable),
+    .groups = "drop"
+  )
+
+num_DBS <- df_detc_dbs$signumber
+
+# ID
+# DBS
+pcawg_id2 <- dplyr::inner_join(pcawg_id, 
+                                df_rel[,c("sample","cancer_type")],
+                                by = "sample")
+
+df_id <- pcawg_id2 %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("ID")), ~ ifelse(. > 0, 1L, 0L)) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("ID"),
+    names_to = "sig", values_to = "detectable"
+  )
+
+df2_id <- pcawg_id2 %>%
+  tidyr::pivot_longer(
+    cols = dplyr::starts_with("ID"),
+    names_to = "sig", values_to = "expo"
+  )
+
+df_id <- dplyr::left_join(df_id, df2_id,
+                           by = c("sample", "cancer_type", "sig")
+)
+
+df_type_id <- df_id %>%
+  dplyr::group_by(cancer_type, sig) %>%
+  dplyr::summarise(
+    freq = sum(detectable), # directly use count
+    expo = median(expo[detectable == 1]),
+    n = n(),
+    label = paste0(unique(cancer_type), " (n=", n, ")"),
+    .groups = "drop"
+  )
+
+
+df_detc_id <- df_id %>%
+  dplyr::group_by(cancer_type, sample) %>%
+  dplyr::summarise(
+    signumber = sum(detectable),
+    .groups = "drop"
+  )
+
+num_ID <- df_detc_id$signumber
+
+# sum
+df_num_all <- dplyr::tibble(
+  sig_type = rep(
+    c("CNS", "SBS", "DBS", "ID"),
+    c(length(num_CNS), length(num_SBS), length(num_DBS), length(num_ID))
+  ),
+  num = c(num_CNS,num_SBS,num_DBS,num_ID)
+)
+# saveRDS(df_num_all, file = "/home/tzy/projects/CNX-method/data/df_num_all.rds")
+
+```
+
+Pan-Cancer signature number distribution.
+
+```{r fig.width=6, fig.height=4}
+library(ggpubr)
+num <- ggboxplot(df_num_all,
+          x = "sig_type", y = "num",
+          ylab = "Signature number",
+          color = "sig_type",
+          xlab = FALSE,
+          legend = "none",
+          palette = "jco",
+          width = 0.3,
+          outlier.size = 0.05) +
+  scale_color_manual(values=c("#0073C2","#EFC000","#CD534C","#7AA6DC"))
+num
+```
+
+Most tumors have 3-6 signatures.
+
+```{r fig.width=8, fig.height=7}
+cancer_num <- ggplot(data = df_detc_cns, aes(x = cancer_type, y = signumber, fill = cancer_type)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(x = NULL, y = "Signature number") +
+  theme_cowplot() +
+  theme(legend.position = "none")
+cancer_num
+```
+
+From the landscape and distribution data, we know that many signatures activate in most of cancer types, but for a specified tumor, in general there are 2-4 signatures are detectable.
+
+## Cancer type associated enrichment
+
+Run enrichment analysis.
+
+```{r, message=FALSE}
+enrich_result <- group_enrichment(
+  df_abs,
+  grp_vars = "cancer_type",
+  enrich_vars = paste0("CNS", 1:14),
+  co_method = "wilcox.test"
+)
+```
+
+Show enrichment landscape.
+
+```{r fig.height=8, fig.width=8.5}
+enrich_result$enrich_var <- factor(enrich_result$enrich_var, paste0("CNS", 1:14))
+p <- show_group_enrichment(enrich_result, fill_by_p_value = TRUE, return_list = T)
+p <- p$cancer_type + labs(x = NULL, y = NULL)
+p
+
+ggsave("../output/CNS_PCAWG_enrichment_landscape.pdf", plot = p,
+       height = 8, width = 8.5)
+```
+
+To better visualize the enrichment results, we use binned color regions.
+
+```{r fig.height=8, fig.width=8.5}
+p <- show_group_enrichment(
+  enrich_result, 
+  fill_by_p_value = TRUE, 
+  cut_p_value = TRUE,
+  return_list = T)
+p <- p$cancer_type + labs(x = NULL, y = NULL)
+p
+
+ggsave("../output/CNS_PCAWG_enrichment_landscape2.pdf", plot = p,
+       height = 8, width = 8.5)
+```
+
+We see cancer type `SoftTissue-Liposarc` has pretty high enrichment on `CNS4`.
+Let's check the enrichment result.
+
+```{r}
+enrich_result[grp1 == "SoftTissue-Liposarc"]
+```
+
+Let's go further plot the distribution for the two groups.
+
+```{r}
+df_check <- df_abs[, c("CNS4", "cancer_type")][
+  , .(cancer_type = ifelse(cancer_type == "SoftTissue-Liposarc", 
+                           "SoftTissue-Liposarc",
+                           "Others"),
+      CNS4 = CNS4)]
+```
+
+```{r fig.width=4, fig.height=6}
+# ggpubr::ggboxplot(
+#   df_check, 
+#   x = "cancer_type", y = "CNS4", 
+#   fill = "cancer_type", 
+#   xlab = FALSE, width = 0.3, legend = "none")
+show_group_distribution(
+  df_check,
+  gvar = "cancer_type",
+  dvar = "CNS4",
+  order_by_fun = FALSE,
+  g_angle = 90,
+  ylab = "CNS4"
+)
+```
+Check copy number distribution for the `"SoftTissue-Liposarc"` samples.
+
+```{r}
+samples <- df_abs[cancer_type == "SoftTissue-Liposarc"]$sample
+
+pcawg_cn_obj <- readRDS("../data/pcawg_cn_obj.rds")
+cn_dt <- subset(pcawg_cn_obj@data, sample %in% samples)
+cn_dt$segLen = cn_dt$end - cn_dt$start + 1
+```
+
+Copy number value:
+
+```{r fig.width=3, fig.height=5}
+boxplot(cn_dt$segVal, ylab = "Copy number value")
+```
+
+Segment length:
+
+```{r fig.width=3, fig.height=5}
+boxplot(cn_dt$segLen, ylab = "Segment length")
+```
+
+```{r}
+cn_dt_samp <- cn_dt[, .(nAMP = sum(segVal > 2)), by = sample]
+```
+
+```{r fig.width=3, fig.height=4}
+boxplot(cn_dt_samp$nAMP, ylab = "Number of amplifications")
+```
