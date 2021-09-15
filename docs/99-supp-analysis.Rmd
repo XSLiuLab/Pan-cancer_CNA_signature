@@ -383,11 +383,11 @@ Do same operation like PCAWG: keep only samples with >75% reconstructed similari
 ```{r}
 df_act <- data.table::copy(tcga_act$absolute)
 df_act <- df_act %>% 
-  mutate(across(where(is.numeric), ~./10))
+  dplyr::mutate(dplyr::across(where(is.numeric), ~./10))
 
 keep_tcga_samples <- tcga_act$similarity %>% 
-  filter(similarity > 0.75) %>% 
-  pull(sample)
+  dplyr::filter(similarity > 0.75) %>% 
+  dplyr::pull(sample)
 ```
 
 Read phenotype data.
@@ -1255,7 +1255,6 @@ saveRDS(tally_W, file = "../data/pcawg_cn_tally_W.rds")
 ResultX <- list()
 ResultW <- list()
 types <- c("Breast", "Ovary-AdenoCA", "Prost-AdenoCA", "Liver-HCC", "Skin-Melanoma")
-
 for (type in types) {
   message("=> Handling type: ", type)
   samples = pcawg_types$sample[pcawg_types$cancer_type == type]
@@ -1270,7 +1269,7 @@ for (type in types) {
   rm(sigX, sigW)
 }
 
-save(ResultX, ResultW, file = "../Comparison_Sig_Data.RData")
+save(ResultX, ResultW, file = "../data/Comparison_Sig_Data.RData")
 ```
 
 ### Comparison
@@ -1322,11 +1321,11 @@ count_df <- map2_df(ResultX, ResultW, function(x, y) {
 
 count_df2 <- left_join(count_df, observed_count, by = "sample")
 
-save(CrossSim, count_df2, file = "../Comparison_Result_Data.RData")
+save(CrossSim, count_df2, file = "../data/Comparison_Result_Data.RData")
 ```
 
 ```{r include=FALSE}
-load("../Comparison_Result_Data.RData")
+load("../data/Comparison_Result_Data.RData")
 ```
 
 ```{r fig.width=12, fig.height=7}
