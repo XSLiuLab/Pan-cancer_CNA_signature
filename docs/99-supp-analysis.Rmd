@@ -886,6 +886,8 @@ library(ggpubr)
 
 #### Distribution
 
+PCAWG
+
 ```{r}
 data <- pcawg_summary %>% 
   dplyr::select(sample, n_of_cnv, cna_burden, sbs, ids) %>% 
@@ -919,6 +921,8 @@ ggplot(data, aes(x = value, y = name, fill = name)) +
 ```
 
 
+TCGA
+
 ```{r}
 data <- tcga_summary %>% 
   dplyr::select(sample, n_of_cnv, cna_burden, sbs, ids) %>% 
@@ -949,7 +953,7 @@ ggplot(data, aes(x = value, y = name, fill = name)) +
   theme(legend.position = "none")
 ```
 
-CNA burden pancancer distribution.
+PCAWG CNA burden pancancer distribution.
 
 ```{r fig.width=6, fig.height=7}
 p <- ggplot(pcawg_summary, aes(x = cna_burden, y = cancer_type, fill = cancer_type)) +
@@ -959,6 +963,8 @@ p <- ggplot(pcawg_summary, aes(x = cna_burden, y = cancer_type, fill = cancer_ty
   theme(legend.position = "none")
 p
 ```
+
+TCGA CNA burden pancancer distribution.
 
 ```{r fig.width=6, fig.height=7}
 p2 <- ggplot(tcga_summary %>% 
@@ -1017,6 +1023,7 @@ ggscatter(data, x = "Total CNVs (log10)", y = "Total Indels (log10)",
 
 ```
 
+TCGA:
 
 ```{r}
 data <- tcga_summary %>% 
