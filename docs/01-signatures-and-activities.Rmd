@@ -1,6 +1,6 @@
 ---
 title: "PART 1: Copy number signature identification and activity attribution"
-author: ["Shixiang Wang, Ziyu Tao, Tao Wu, Xue-Song Liu (Corresponding author)"]
+author: ["Ziyu Tao, Shixiang Wang, Chenxu Wu, Huimin Li, Tao Wu, Xiangyu Zhao, Wei Ning, Guangshuai Wang, Xue-Song Liu (Corresponding author)"]
 date: "`r Sys.Date()`"
 output:
   rmdformats::downcute:

@@ -44,7 +44,7 @@ This document is compiled from an RMarkdown file which contains all code or desc
 
 **If you want to reuse the code in this report, please note the license below should be followed**.
 
-The code is made available for non commercial research purposes only under the MIT. However, notwithstanding any provision of the MIT License, the software currently may not be used for commercial purposes without explicit written permission after contacting Shixiang Wang <wangshx@shanghaitech.edu.cn> or Xue-Song Liu <liuxs@shanghaitech.edu.cn>.
+The code is made available for non commercial research purposes only under the MIT. However, notwithstanding any provision of the MIT License, the software currently may not be used for commercial purposes without explicit written permission after contacting Ziyu Tao <taozy@shanghaitech.edu.cn> or Xue-Song Liu <liuxs@shanghaitech.edu.cn>.
 
 # PART 0: Data preprocessing
 
