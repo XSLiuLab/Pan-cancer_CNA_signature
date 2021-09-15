@@ -214,7 +214,8 @@ p_smoke_uv <- show_cor(
   y_vars = colnames(pcawg_smoke_uv)[grepl("UV|smoke", colnames(pcawg_smoke_uv))],
   hc_order = FALSE,
   test = TRUE,
-  lab_size = 2
+  lab_size = 2,
+  insig = "blank"
 )
 p_smoke_uv
 ```

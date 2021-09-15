@@ -872,6 +872,40 @@ p + coord_flip()
 
 > The `HR` here represents `Heavily rearrangement`, don't mix it with `HRD` which means `Defective homologous recombination DNA damage repair`.
 
+### DNA-repair genes
+
+We collect pathogeniv germline variants and somatic driver mutations in DNA-repair genes. Identification of pathogenic variants in human kinases from the PCAWG Drivers and Functional Interpretation Group (https://dcc.icgc.org/releases/PCAWG/driver_mutations). The file  TableS3_panorama_driver_mutations_ICGC_samples.public.tsv.gz reported both somatic and pathogenic germline variants.
+
+choose DNA-repair genes
+
+```{r}
+repair.select <- c("ATM","BRCA1","BRCA2", "CDK12","CHEK2", 
+                   "FANCA", "FANCC", "FANCD2", "FANCF",
+                   # "MSH2",
+                   "MSH3","MSH4",
+                   # "MSH5","MSH6",
+                   "PALB2","POLE","RAD51B","TP53")
+```
+
+select pathogenic gene and count for each sample
+
+```{r}
+pcawg_pathogenic <- dplyr::inner_join(
+  read.csv2("../data/TableS3_panorama_driver_mutations_ICGC_samples.public.tsv.gz",sep = "\t"),
+  read.csv2("../data/pcawg_sample_sheet.tsv", sep = "\t") 
+  %>%
+    dplyr::select(., aliquot_id, icgc_specimen_id,dcc_project_code) %>%
+    dplyr::rename(., sample_id = "aliquot_id"),
+  by = "sample_id"
+) %>%
+  dplyr::select(., gene, icgc_specimen_id) %>%
+  dplyr::rename(., Sample = "icgc_specimen_id") %>%
+  subset(., gene %in% repair.select)%>%
+  .[!duplicated(.),] %>%
+  dplyr::mutate(num = 1)
+
+```
+
 ### Driver genes
 
 We have already observed that there are different mutational processes across different groups. Here we try to go further study if different driver genes activate in different groups.
@@ -1000,4 +1034,5 @@ df_genes <- dplyr::left_join(df_others[, c("sample", "cluster")],
   na.omit() %>% 
   tidyr::pivot_wider(names_from = "gene", values_from = "ROLE")
 ```
+
 

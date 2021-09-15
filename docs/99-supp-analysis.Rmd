@@ -1190,6 +1190,8 @@ show_group_distribution(
 
 ### Variation enrichment in cancer types
 
+## PCAWG:
+
 ```{r}
 enrich_pcawg <- group_enrichment(
   pcawg_summary %>% 
@@ -1210,6 +1212,9 @@ p <- show_group_enrichment(enrich_pcawg, cut_p_value = TRUE, return_list = TRUE)
 p$cancer_type + labs(x = NULL, y = NULL) + ggpubr::rotate_x_text(angle = 45)
 ```
 
+## TCGA:
+
+Grey squares will aesthetically replaced by white squares also represent NA.
 
 ```{r}
 enrich_tcga <- group_enrichment(
@@ -1337,6 +1342,8 @@ load("../data/Comparison_Result_Data.RData")
 
 ```{r fig.width=12, fig.height=7}
 library(ggpubr)
+CrossSim$method <- ifelse(CrossSim$method == "W","Wang et al method","Method developed here")
+
 p <- ggboxplot(CrossSim %>%
                  mutate(
                    sig_type = stringr::str_replace(sig_type, "_Sigs", "")
@@ -1370,7 +1377,8 @@ p <- ggboxplot(count_summary %>%
                  ),
                x = "sig_type", y = "change_frac", fill = "method", size = 0.5, width = 0.5, outlier.size = 0.5,
                facet.by = "cancer_type", scales = "free_y",
-               xlab = "Extracted signature number", ylab = "Change between observed segments and estimated segments (%)") +
+               xlab = "Extracted signature number", ylab = "Change between observed segments and estimated segments (%)"
+) +
   stat_compare_means(aes(group = method, label = ..p.signif..))
 p
 ```
