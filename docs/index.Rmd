@@ -84,6 +84,17 @@ The code is made available for non commercial research purposes only under the M
 
 ```
 
+# PART 6: Benchmark analysis
+
+```{r, child="06-benchmark-analysis.Rmd"}
+
+```
+
+# Fit PCAWG to TCGA
+
+```{r, child="98-supp-analysis.Rmd"}
+
+```
 
 # Supplementary Analyses
 

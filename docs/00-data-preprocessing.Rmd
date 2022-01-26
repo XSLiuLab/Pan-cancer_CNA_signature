@@ -262,6 +262,81 @@ The generated catalog profiles for LOH version and non-LOH version component cla
 - [tcga_catalogs_tally_X.pdf](https://github.com/ShixiangWang/CNX/blob/master/output/tcga_catalogs_tally_X.pdf) - 176 components
 - [tcga_catalogs_tally_X_noLOH.pdf](https://github.com/ShixiangWang/CNX/blob/master/output/tcga_catalogs_tally_X_noLOH.pdf) - 136 components
 
+## Distribution of CNA segment features in PCAWG cancer types
+```{r fig.width=6, fig.height=4}
+pcawg_cn2 <- readRDS("../data/pcawg_cn_obj.rds") %>% 
+  .@data
+pcawg_types <- readRDS("../data/pcawg_type_info.rds")
+pcawg_cn2 <- dplyr::left_join(
+  pcawg_cn2,
+  pcawg_types,
+  by = "sample"
+) 
+pcawg_cn2$length <- pcawg_cn2$end- pcawg_cn2$start
+pcawg_cn2$length2 <- log10((pcawg_cn2$length)/5)
+
+library(ggpubr)
+library(ggsci)
+# distribution of segment size
+p_seg_size <- ggpubr::ggdensity(pcawg_cn2, 
+                       x = "length2",
+                       facet.by = "cancer_type", 
+                       fill = "cancer_type",
+                       alpha = 0.8
+                  ) +
+  scale_fill_igv() +
+  scale_color_igv() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank()
+    ) +
+  scale_x_continuous(
+    name = "length2",
+    limits = c(3, 7),
+    breaks = c(4, 5, 6),
+    labels = c("50Kb", "500Kb", "5Mb")
+    ) +
+  geom_vline(xintercept = c(4,5,6), linetype = "dashed")
+p_seg_size
+```
+
+```{r fig.width=6.5, fig.height=4}
+# distribution of copy number
+high_cancer <- c(
+  "Breast","Liver-HCC","Ovary-AdenoCA",
+  "Panc-AdenoCA","Prost-AdenoCA","Eso-AdenoCA")
+
+pcawg_cn2$cancer_type <- factor(
+  pcawg_cn2$cancer_type, 
+  levels = c(
+    high_cancer, 
+    setdiff(names(table(pcawg_cn2$cancer_type)), high_cancer))
+  )
+p_cn_number <- ggpubr::ggdensity(pcawg_cn2, 
+                  x = "segVal",
+                  y = "..count..",
+                  facet.by = "cancer_type",
+                  scales = "free_y",
+                  fill = "cancer_type",
+                  alpha = 0.8,
+) +
+  scale_fill_igv() +
+  scale_color_igv() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank()
+  ) +
+  scale_x_continuous(
+    name = "segVal",
+    limits = c(0, 32),
+    breaks = c(0, 2, 16, 32),
+    labels = c("0", "2","16","32")
+  ) +
+  geom_vline(xintercept = c(2,16,32), linetype = "dashed")
+p_cn_number
+```
+
+
 ## PCAWG genotype/phenotype data type and source
 
 If no references described, PCAWG genotype/phenotype data used in this study are obtained from UCSC Xena database, the original data source is [PCAWG paper collection](https://www.nature.com/collections/afdejfafdb) published in early 2020.

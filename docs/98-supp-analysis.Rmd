@@ -1,0 +1,130 @@
+---
+title: "Supplementary Analyses"
+author: ["Ziyu Tao, Shixiang Wang, Chenxu Wu, Huimin Li, Tao Wu, Xiangyu Zhao, Wei Ning, Guangshuai Wang, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-98, include=FALSE}
+library(sigminer)
+library(ggplot2)
+library(ggpubr)
+
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+In this part, we fit PCAWG to TCGA signatures. 
+
+```{r, eval=FALSE}
+library(sigminer)
+tcga_cn_sigs_CN176_signature <- readRDS("../data/TCGA/tcga_cn_sigs_CN176_signature.rds")
+pcawg_cn_tally_X <- readRDS("../data/pcawg_cn_tally_X.rds")
+pcawg_matrix <- t(pcawg_cn_tally_X$nmf_matrix) 
+pcawg_fit_qp <- sig_fit_bootstrap_batch(
+  pcawg_matrix,
+  sig = tcga_cn_sigs_CN176_signature,
+  methods = c("QP"),
+  n = 100L,
+  min_count = 1L,
+  p_val_thresholds = c(0.05),
+  use_parallel = 12,
+  type = c("absolute")
+)
+saveRDS(pcawg_fit_qp, file = "../data/pcawg_fit_qp.rds")
+```
+
+#### observed segment catalog profile
+
+```{r}
+pcawg_fit_qp <- readRDS("../data/pcawg_fit_qp.rds")
+pcawg_tcga_sample <- readRDS("../data/pcawg_sample_tidy_info.rds") 
+pcawg_tcga <- readRDS("../data/pcawg_tcga_type.rds") %>% distinct()
+choose_fit_sample <- subset(
+  pcawg_fit_qp[["cosine"]], 
+  sample %in% pcawg_tcga_sample$sample
+  )
+s <- "SP112827"
+tally_x <- readRDS("../data/pcawg_cn_tally_X.rds")
+tcga_sig <- readRDS("../data/TCGA/tcga_cn_sigs_CN176_signature.rds")
+pcawg_sig <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
+
+```
+
+```{r fig.width=6, fig.height=2}
+p <- show_catalogue(t(tally_x$nmf_matrix), samples = s,
+                    style = "cosmic", mode = "copynumber", method = "X",
+                    # by_context = TRUE, font_scale = 0.7, 
+                    normalize = "row")
+p
+```
+
+#### reconstructed catalog profile
+
+```{r}
+
+pcawg_fit_expo <- pcawg_fit_qp$expo %>%
+  subset(., type == "optimal") %>%
+  dplyr::select(., sample, sig, exposure) %>%
+  reshape2::dcast(.,sig ~ sample) %>%
+  tibble::column_to_rownames(., var = "sig") %>% 
+  as.matrix()
+
+reconstructed_mat <- tcga_sig$Signature.norm %*% pcawg_fit_expo
+```
+
+```{r fig.width=6, fig.height=2}
+p <- show_catalogue(reconstructed_mat, samples = s,
+                    style = "cosmic", mode = "copynumber", method = "X",
+                    normalize = "row")
+p
+```
+
+The similarity of observed profile of reconstructed profile.
+
+```{r}
+cosine(reconstructed_mat[, s], t(tally_x$nmf_matrix)[, s])
+
+```
+
+```{r fig.width=6, fig.height=2}
+p <- show_sig_profile(tcga_sig, sig_names = paste0("Sig", c(1,2,10,13)),
+                 style = "cosmic", mode = "copynumber", method = "X",
+                 )
+p
+```
+
+
+```{r fig.width=6, fig.height=2}
+pcawg_sig <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
+p <- show_sig_profile(
+  pcawg_sig, 
+  sig_names = factor(paste0("CNS", c(2,3,7,8,10,11)), 
+                     levels = paste0("CNS", c(10,3,2,8,7,11))),
+  style = "cosmic", 
+  mode = "copynumber", 
+  method = "X"
+  ) 
+p
+```

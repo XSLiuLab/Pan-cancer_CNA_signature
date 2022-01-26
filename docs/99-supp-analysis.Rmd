@@ -252,7 +252,6 @@ Results can be found in:  TCGA_CN176X  folder
 Next we determine the signature number.
 
 ```{r eval=FALSE}
-library(sigminer)
 SP_TCGA <- sigprofiler_import("../SP/TCGA_CN176X/", order_by_expo = TRUE, type = "all")
 saveRDS(SP_TCGA, file = "../data/TCGA/tcga_cn_solutions_sp.rds")
 ```
@@ -323,6 +322,7 @@ pcawg_sigs <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
 Run similarity analysis.
 
 ```{r}
+library(sigminer)
 sim <- get_sig_similarity(pcawg_sigs, tcga_sigs)
 ```
 
@@ -352,7 +352,7 @@ summary(apply(sim$similarity, 1, max))
 
 To better integrate PCAWG and TCGA result, here we use PCAWG CNS as reference and label TCGA copy number signatures by following the rule:
 
-- Define the signature similarity level: >=0.8 (High, H), >=0.5(Medium, M), >=0.3(Low, L).
+- Define the signature similarity level: >=0.8 (High, H), >=0.51(Medium, M), < 0.51(UNMATCH).
 
 Based on the rule, we can get the labels for TCGA signatures according to the similarity matrix heatmap.
 
@@ -392,7 +392,7 @@ keep_tcga_samples <- tcga_act$similarity %>%
 
 Read phenotype data.
 
-```{r}
+```{r message=FALSE}
 #tcga_act <- readRDS(file = "../data/TCGA/tcga_cn_sigs_CN176_activity.rds")
 tcga_cli <- readRDS("../data/TCGA/tcga_cli.rds")
 tcga_type <- readRDS("../data/TCGA/TCGA_type_info.rds")
@@ -401,6 +401,8 @@ tcga_type <- readRDS("../data/TCGA/TCGA_type_info.rds")
 Merge the data.
 
 ```{r}
+library(purrr)
+library(tidyverse)
 tcga_surv_df <- reduce(list(
   tcga_type,
   tcga_cli,
@@ -415,6 +417,7 @@ Same as for PCAWG data, we build two multi-variable cox model here. However,  we
 Control the cancer types, and run Cox for each signatures:
 
 ```{r fig.width=8, fig.height=7}
+library(ezcox)
 p1 <- show_forest(tcga_surv_df,
   covariates = label_df$label, controls = "cancer_type",
   vars_to_show = label_df$label,
@@ -460,6 +463,37 @@ p4 <- show_forest(tcga_surv_df %>% filter(!is.na(PFI.time)),
 p4
 ```
 
+```{r message=FALSE}
+# run cox for all signatures for selected cancer type in TCGA
+library(patchwork)
+library(ggplot2)
+library(tidyr)
+library(ezcox)
+selected_cancer <- names(
+  table(tcga_surv_df$cancer_type)[which(table(tcga_surv_df$cancer_type) >= 500)]
+)
+
+myplot <- function(i) {
+  tcga_surv_df2 <- subset(
+    tcga_surv_df,
+    cancer_type == i
+  )
+  p4 <- show_forest(tcga_surv_df2 %>% filter(!is.na(PFI.time)),
+                    covariates = label_df$label[1], controls = c(label_df$label[-1]),
+                    vars_to_show = label_df$label,
+                    merge_models = TRUE, add_caption = FALSE, point_size = 2,
+                    time = "PFI.time", status = "PFI"
+  )+labs(title = i)+xlab("")+ylab("")
+}
+
+```
+
+```{r}
+p <- mapply(myplot, i = selected_cancer, SIMPLIFY = FALSE)
+# plot
+Rmisc::multiplot(plotlist = p, layout = matrix(1:9, nrow = 3))
+```
+
 #### Show signature profile for unmatched/low-matched signatures
 
 ```{r}
@@ -468,7 +502,7 @@ library(tidyverse)
 tcga_sig_mat <- sig_signature(tcga_sigs)
 
 um_df <- label_df %>% filter(
-  match %in% c("CNS6(L)_3", "CNS13(L)_2", "UNMATCH1", "UNMATCH2"))
+  match %in% c("UNMATCH3", "UNMATCH4", "UNMATCH1", "UNMATCH2"))
 um_names <- um_df$label
 names(um_names) <- um_df$TCGA
 
@@ -480,7 +514,8 @@ colnames(um_sig_mat) <- as.character(um_names)
 p <- show_sig_profile(um_sig_mat, mode = "copynumber", method = "X", 
                       check_sig_names = FALSE, style = "cosmic", 
                       by_context = TRUE, font_scale = 0.6,
-                      sig_orders = c(2, 3, 1, 4))
+                      sig_orders = c(2, 3, 1, 4)
+                      )
 p
 ```
 

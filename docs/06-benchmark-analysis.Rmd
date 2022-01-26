@@ -1,0 +1,156 @@
+---
+title: "PART 6: Benchmark analysis"
+author: ["Ziyu Tao, Shixiang Wang, Chenxu Wu, Huimin Li, Tao Wu, Xiangyu Zhao, Wei Ning, Guangshuai Wang, Xue-Song Liu (Corresponding author)"]
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+bibliography: ref.bib
+link-citations: yes
+---
+
+
+```{r setup-06, include=FALSE}
+library(knitr)
+library(rmdformats)
+library(sigminer)
+library(ggplot2)
+library(tidyverse)
+## Global options
+options(max.print = "75")
+opts_chunk$set(
+  echo = FALSE,
+  cache = FALSE,
+  prompt = FALSE,
+  tidy = "styler",
+  comment = NA,
+  dpi = 300,
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE
+)
+opts_knit$set(width = 75)
+Sys.setenv("LANGUAGE" = "EN")
+```
+
+To evaluate the performance of our method across different platform and copy number calling tools. We carried out benchmark analysis in prostate cancer.
+
+## Compare the copy number calling algorithms
+
+For WGS, we select copy number from ABSOLUTE and ACEseq. For WES, we select copy number from ABSOLUTE and ASCAT.  
+
+```{r message=FALSE}
+tally_SNP_ABSOLUTE <- readRDS("../data/benchmark/tally_SNP_ABSOLUTE_matrix.rds")
+tally_SNP_ASCAT2 <- readRDS("../data/benchmark/tally_SNP_ASCAT2_matrix.rds")
+
+
+# Compare different CNV algorithms in SNP
+SNP_sample <- intersect(rownames(tally_SNP_ABSOLUTE), rownames(tally_SNP_ASCAT2))
+tally_SNP_ABSOLUTE <- subset(tally_SNP_ABSOLUTE, rownames(tally_SNP_ABSOLUTE) %in% SNP_sample)
+tally_SNP_ASCAT2 <- subset(tally_SNP_ASCAT2, rownames(tally_SNP_ASCAT2) %in% SNP_sample)
+sim_profile.SNP <- sapply(SNP_sample, function(i){
+    dt1.1 <- tally_SNP_ASCAT2[i,]
+    dt2.1 <- tally_SNP_ABSOLUTE[i,]
+    sigminer:::cosine(dt1.1, dt2.1)
+}) %>% 
+  subset(. > 0.4)
+median(sim_profile.SNP)
+```
+
+```{r}
+hist(sim_profile.SNP, breaks = 50, xlab = "",
+     main = "Copy number profile similarity from two methods(SNP)",xlim = range(0,1))
+abline(v = 0.8500122, col = "red",lty=2)
+```
+
+We compared the signature between tools in SNP. 
+
+```{r message=FALSE}
+SNP_ABSOLUTE_SP_sigs <- readRDS("../data/benchmark/SNP_ABSOLUTE_SP_highmatch.rds")
+SNP_ASCAT2_SP_sigs <- readRDS("../data/benchmark/SNP_ASCAT2_SP_highmatch.rds")
+colnames(SNP_ABSOLUTE_SP_sigs$solution_list$S4$Signature.norm) <- paste0("SNP_ABSOLUTE_sigs",seq(1:4))
+colnames(SNP_ASCAT2_SP_sigs$solution_list$S4$Signature.norm) <- paste0("SNP_ASCAT_sigs",seq(1:4))
+sim <- get_sig_similarity(SNP_ABSOLUTE_SP_sigs$solution_list$S4, SNP_ASCAT2_SP_sigs$solution_list$S4)
+```
+
+```{r fig.width=6, fig.height=4}
+p <- pheatmap::pheatmap(sim$similarity, cluster_cols = F, cluster_rows = F, display_numbers = TRUE)
+
+```
+
+```{r}
+tally_WGS_ABSOLUTE <- readRDS("../data/benchmark/tally_WGS_ABSOLUTE_matrix.rds")
+tally_WGS_aceseq <- readRDS("../data/benchmark/tally_WGS_aceseq_matrix.rds")
+
+# Compare different CNV algorithms in WGS
+WGS_sample <- intersect(rownames(tally_WGS_ABSOLUTE), rownames(tally_WGS_aceseq))
+tally_WGS_ABSOLUTE <- subset(
+  tally_WGS_ABSOLUTE, 
+  rownames(tally_WGS_ABSOLUTE) %in% WGS_sample
+  )
+tally_WGS_aceseq <- subset(tally_WGS_aceseq, rownames(tally_WGS_aceseq) %in% WGS_sample)
+sim_profile.WGS <- sapply(WGS_sample, function(i){
+  dt1.1 <- tally_WGS_ABSOLUTE[i,]
+  dt2.1 <- tally_WGS_aceseq[i,]
+  sigminer:::cosine(dt1.1, dt2.1)
+}) %>% 
+  subset(. > 0.4)
+hist(sim_profile.WGS, breaks = 50, xlab = "",
+     main = "Copy number profile similarity from two methods(WGS)",xlim = range(0,1))
+abline(v = 0.9725061, col = "red",lty=2)
+```
+
+We compared the signature between tools in WGS.  
+
+```{r message=FALSE}
+WGS_ABSOLUTE_SP_sigs <- readRDS("../data/benchmark/WGS_ABSOLUTE_SP_highmatch.rds")
+WGS_aceseq_SP_sigs <- readRDS("../data/benchmark/wgs_aceseq_sig.rds")
+colnames(WGS_ABSOLUTE_SP_sigs$solution_list$S4$Signature.norm) <- paste0("WGS_ABSOLUTE_sigs",seq(1:4))
+colnames(WGS_aceseq_SP_sigs$Signature.norm) <- paste0("WGS_ACEseq_sigs",seq(1:4))
+sim <- get_sig_similarity(WGS_ABSOLUTE_SP_sigs$solution_list$S4, WGS_aceseq_SP_sigs)
+```
+
+```{r fig.width=6, fig.height=4}
+p <- pheatmap::pheatmap(sim$similarity, cluster_cols = F, cluster_rows = F, display_numbers = TRUE)
+```
+
+## Compare the data platforms
+
+CNA signatures have been extracted independently from WGS, WES and SNP array derived prostate cancer CNA profiles. We compare the 4 copy number signatures extracted by Sigprofiler platform. 
+
+### SNP vs WGS
+
+```{r message=FALSE}
+SNP_sigs_source <- readRDS("../data/benchmark/SNP_ABSOLUTE_SP_source.rds")
+WGS_sigs_source <- readRDS("../data/benchmark/WGS_ABSOLUTE_SP_source.rds")
+WES_sigs_source <- readRDS("../data/benchmark/WES_FACETS_SP_source.rds")
+
+colnames(SNP_sigs_source$solution_list$S4$Signature.norm) <- paste0("SNP_sigs",seq(1:4))
+colnames(WGS_sigs_source$solution_list$S4$Signature.norm) <- paste0("WGS_sigs",seq(1:4))
+colnames(WES_sigs_source$solution_list$S4$Signature.norm) <- paste0("WES_sigs",seq(1:4))
+sim <- get_sig_similarity(SNP_sigs_source$solution_list$S4, WGS_sigs_source$solution_list$S4)
+```
+
+```{r fig.width=6, fig.height=4}
+p <- pheatmap::pheatmap(sim$similarity, cluster_cols = F, cluster_rows = F, display_numbers = TRUE)
+```
+
+### SNP vs WES
+
+```{r fig.width=6, fig.height=4}
+sim <- get_sig_similarity(SNP_sigs_source$solution_list$S4, WES_sigs_source$solution_list$S4)
+p <- pheatmap::pheatmap(
+  sim$similarity, 
+  cluster_cols = F, 
+  cluster_rows = F, 
+  display_numbers = TRUE,
+  legend_breaks=c(0.2,0.4,0.6,0.8)
+  )
+```
+### WES vs WGS
+
+```{r fig.width=6, fig.height=4}
+sim <- get_sig_similarity(WES_sigs_source$solution_list$S4, WGS_sigs_source$solution_list$S4)
+p <- pheatmap::pheatmap(sim$similarity, cluster_cols = F, cluster_rows = F, display_numbers = TRUE)
+```
