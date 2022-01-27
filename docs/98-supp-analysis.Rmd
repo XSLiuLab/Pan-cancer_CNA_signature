@@ -15,7 +15,7 @@ link-citations: yes
 library(sigminer)
 library(ggplot2)
 library(ggpubr)
-
+library(dplyr)
 library(knitr)
 library(rmdformats)
 ## Global options
@@ -72,7 +72,7 @@ pcawg_sig <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
 
 ```
 
-```{r fig.width=6, fig.height=2}
+```{r fig.width=15, fig.height=3}
 p <- show_catalogue(t(tally_x$nmf_matrix), samples = s,
                     style = "cosmic", mode = "copynumber", method = "X",
                     # by_context = TRUE, font_scale = 0.7, 
@@ -94,7 +94,7 @@ pcawg_fit_expo <- pcawg_fit_qp$expo %>%
 reconstructed_mat <- tcga_sig$Signature.norm %*% pcawg_fit_expo
 ```
 
-```{r fig.width=6, fig.height=2}
+```{r fig.width=15, fig.height=3}
 p <- show_catalogue(reconstructed_mat, samples = s,
                     style = "cosmic", mode = "copynumber", method = "X",
                     normalize = "row")
@@ -108,7 +108,7 @@ cosine(reconstructed_mat[, s], t(tally_x$nmf_matrix)[, s])
 
 ```
 
-```{r fig.width=6, fig.height=2}
+```{r fig.width=15, fig.height=5}
 p <- show_sig_profile(tcga_sig, sig_names = paste0("Sig", c(1,2,10,13)),
                  style = "cosmic", mode = "copynumber", method = "X",
                  )
@@ -116,7 +116,7 @@ p
 ```
 
 
-```{r fig.width=6, fig.height=2}
+```{r fig.width=15, fig.height=6}
 pcawg_sig <- readRDS("../data/pcawg_cn_sigs_CN176_signature.rds")
 p <- show_sig_profile(
   pcawg_sig, 

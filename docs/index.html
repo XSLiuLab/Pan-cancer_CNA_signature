@@ -476,7 +476,7 @@
 <span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
 <span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">6</span>), <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>)</span>
 <span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>p_seg_size</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" width="1800" style="display: block; margin: auto;" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" width="4500" style="display: block; margin: auto;" /></p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># distribution of copy number</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>high_cancer <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Breast&quot;</span>, <span class="st">&quot;Liver-HCC&quot;</span>, <span class="st">&quot;Ovary-AdenoCA&quot;</span>,</span>
@@ -512,7 +512,7 @@
 <span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
 <span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">16</span>, <span class="dv">32</span>), <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>)</span>
 <span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>p_cn_number</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-17-1.png" width="1950" style="display: block; margin: auto;" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-17-1.png" width="5100" style="display: block; margin: auto;" /></p>
 </div>
 <div id="pcawg-genotypephenotype-data-type-and-source" class="section level2">
 <h2>PCAWG genotype/phenotype data type and source</h2>
@@ -3130,7 +3130,7 @@ Following methods can be applied to this &#39;ConsensusPartition&#39; object:
 <span id="cb224-5"><a href="#cb224-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">normalize =</span> <span class="st">&quot;row&quot;</span></span>
 <span id="cb224-6"><a href="#cb224-6" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb224-7"><a href="#cb224-7" aria-hidden="true" tabindex="-1"></a>p</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-185-1.png" width="1800" style="display: block; margin: auto;" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-185-1.png" width="4500" style="display: block; margin: auto;" /></p>
 </div>
 <div id="reconstructed-catalog-profile" class="section level4">
 <h4>reconstructed catalog profile</h4>
@@ -3148,7 +3148,7 @@ Following methods can be applied to this &#39;ConsensusPartition&#39; object:
 <span id="cb226-4"><a href="#cb226-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">normalize =</span> <span class="st">&quot;row&quot;</span></span>
 <span id="cb226-5"><a href="#cb226-5" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb226-6"><a href="#cb226-6" aria-hidden="true" tabindex="-1"></a>p</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-187-1.png" width="1800" style="display: block; margin: auto;" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-187-1.png" width="4500" style="display: block; margin: auto;" /></p>
 <p>The similarity of observed profile of reconstructed profile.</p>
 <div class="sourceCode" id="cb227"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb227-1"><a href="#cb227-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cosine</span>(reconstructed_mat[, s], <span class="fu">t</span>(tally_x<span class="sc">$</span>nmf_matrix)[, s])</span></code></pre></div>
 <pre><code>[1] 0.9695092</code></pre>
@@ -3157,7 +3157,7 @@ Following methods can be applied to this &#39;ConsensusPartition&#39; object:
 <span id="cb229-3"><a href="#cb229-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">style =</span> <span class="st">&quot;cosmic&quot;</span>, <span class="at">mode =</span> <span class="st">&quot;copynumber&quot;</span>, <span class="at">method =</span> <span class="st">&quot;X&quot;</span>,</span>
 <span id="cb229-4"><a href="#cb229-4" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb229-5"><a href="#cb229-5" aria-hidden="true" tabindex="-1"></a>p</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-189-1.png" width="1800" style="display: block; margin: auto;" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-189-1.png" width="4500" style="display: block; margin: auto;" /></p>
 <div class="sourceCode" id="cb230"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb230-1"><a href="#cb230-1" aria-hidden="true" tabindex="-1"></a>pcawg_sig <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">&quot;../data/pcawg_cn_sigs_CN176_signature.rds&quot;</span>)</span>
 <span id="cb230-2"><a href="#cb230-2" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">show_sig_profile</span>(</span>
 <span id="cb230-3"><a href="#cb230-3" aria-hidden="true" tabindex="-1"></a>  pcawg_sig,</span>
@@ -3169,7 +3169,7 @@ Following methods can be applied to this &#39;ConsensusPartition&#39; object:
 <span id="cb230-9"><a href="#cb230-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">&quot;X&quot;</span></span>
 <span id="cb230-10"><a href="#cb230-10" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb230-11"><a href="#cb230-11" aria-hidden="true" tabindex="-1"></a>p</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-190-1.png" width="1800" style="display: block; margin: auto;" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-190-1.png" width="4500" style="display: block; margin: auto;" /></p>
 </div>
 </div>
 <div id="supplementary-analyses" class="section level1">

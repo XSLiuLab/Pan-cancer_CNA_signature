@@ -14,6 +14,7 @@ link-citations: yes
 ```{r setup-00, include=FALSE}
 library(knitr)
 library(rmdformats)
+library(dplyr)
 ## Global options
 options(max.print = "75")
 opts_chunk$set(
@@ -263,7 +264,7 @@ The generated catalog profiles for LOH version and non-LOH version component cla
 - [tcga_catalogs_tally_X_noLOH.pdf](https://github.com/ShixiangWang/CNX/blob/master/output/tcga_catalogs_tally_X_noLOH.pdf) - 136 components
 
 ## Distribution of CNA segment features in PCAWG cancer types
-```{r fig.width=6, fig.height=4}
+```{r fig.width=15, fig.height=8}
 pcawg_cn2 <- readRDS("../data/pcawg_cn_obj.rds") %>% 
   .@data
 pcawg_types <- readRDS("../data/pcawg_type_info.rds")
@@ -300,7 +301,7 @@ p_seg_size <- ggpubr::ggdensity(pcawg_cn2,
 p_seg_size
 ```
 
-```{r fig.width=6.5, fig.height=4}
+```{r fig.width=17, fig.height=8}
 # distribution of copy number
 high_cancer <- c(
   "Breast","Liver-HCC","Ovary-AdenoCA",

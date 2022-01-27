@@ -76,7 +76,6 @@ sim <- get_sig_similarity(SNP_ABSOLUTE_SP_sigs$solution_list$S4, SNP_ASCAT2_SP_s
 
 ```{r fig.width=6, fig.height=4}
 p <- pheatmap::pheatmap(sim$similarity, cluster_cols = F, cluster_rows = F, display_numbers = TRUE)
-
 ```
 
 ```{r}
