@@ -1,0 +1,177 @@
+---
+title: "Supplementary Analysis_2"
+author: '"Ziyu Tao, Shixiang Wang, Chenxu Wu, Huimin Li, Tao Wu, Xiangyu Zhao, Wei
+  Ning, Guangshuai Wang, Xue-Song Liu (Corresponding author)"'
+date: "2022/1/27"
+output:output:
+  rmdformats::downcute:
+    self_contained: true
+    toc_depth: 3
+link-citations: yes
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(cowplot)
+```
+
+## KEGG enrichment analysis
+
+```{r}
+KEGG_enrichment <- function(gene){
+library(clusterProfiler)
+gene <- gene$ENTREZID
+kk <- enrichKEGG(gene = gene, organism = "human", qvalueCutoff = 0.05)
+
+kegg <- kk@result
+
+kegg <- kegg %>% filter(p.adjust < 0.05) %>% arrange(p.adjust) %>% slice(1:4)
+kegg$p2 <- -log10(kegg$p.adjust)
+kegg <- kegg %>% mutate(p3 = ifelse(p2 > 6,6,p2))
+
+
+top4 <- data.frame(kegg$Description,kegg$Count ,kegg$p3)
+colnames(top4) <- c("Description","count","-log10(p.adjust)")
+
+return(top4)
+}
+
+```
+
+
+## load data
+```{r}
+load("../data/signature_related_gene.Rdata")
+```
+
+## Enriched pathway for Sig20 activity in TGCT
+```{r}
+data <- KEGG_enrichment(TGCT_gene)
+p <- ggplot(data=data,aes(x=Description,y=count,fill=`-log10(p.adjust)`))+
+  geom_bar(stat="identity") + coord_flip()+
+  theme(panel.background=element_rect(fill='transparent',color='gray'),
+        axis.text.y=element_text(color="black",size=12))+
+  scale_fill_gradient(limits=c(1.3, 6),breaks = c(2:5),low="blue",high="red")+
+  scale_x_discrete(limits=rev(data[,1])) +labs(x="",y="",
+                                                title="Enriched pathway for Sig20 activity in TGCT")+
+  theme(plot.title = element_text(hjust = 0.5))+cowplot::theme_cowplot()
+p
+```
+
+## Enriched pathway for Sig9 activity in ACC
+```{r}
+data <- KEGG_enrichment(ACC_gene_sig9)
+p <- ggplot(data=data,aes(x=Description,y=count,fill=`-log10(p.adjust)`))+
+  geom_bar(stat="identity") + coord_flip()+
+  theme(panel.background=element_rect(fill='transparent',color='gray'),
+        axis.text.y=element_text(color="black",size=12))+
+  scale_fill_gradient(limits=c(1.3, 6),breaks = c(2:5),low="blue",high="red")+
+  scale_x_discrete(limits=rev(data[,1])) +labs(x="",y="",
+                                                title="Enriched pathway for Sig9 activity in ACC")+
+  theme(plot.title = element_text(hjust = 0.5))+cowplot::theme_cowplot()
+p
+```
+
+## Enriched pathway for Sig15 activity in ACC
+```{r}
+data <- KEGG_enrichment(ACC_gene_sig15)
+p <- ggplot(data=data,aes(x=Description,y=count,fill=`-log10(p.adjust)`))+
+  geom_bar(stat="identity") + coord_flip()+
+  theme(panel.background=element_rect(fill='transparent',color='gray'),
+        axis.text.y=element_text(color="black",size=12))+
+  scale_fill_gradient(limits=c(1.3, 6),breaks = c(2:5),low="blue",high="red")+
+  scale_x_discrete(limits=rev(data[,1])) +labs(x="",y="",
+                                                title="Enriched pathway for Sig15 activity in ACC")+
+  theme(plot.title = element_text(hjust = 0.5))+cowplot::theme_cowplot()
+p
+```
+
+## Enriched pathway for Sig18 activity in THYM
+```{r}
+data <- KEGG_enrichment(THYM_gene)
+p <- ggplot(data=data,aes(x=Description,y=count,fill=`-log10(p.adjust)`))+
+  geom_bar(stat="identity") + coord_flip()+
+  theme(panel.background=element_rect(fill='transparent',color='gray'),
+        axis.text.y=element_text(color="black",size=12))+
+  scale_fill_gradient(limits=c(1.3, 6),breaks = c(2:5),low="blue",high="red")+
+  scale_x_discrete(limits=rev(data[,1])) +labs(x="",y="",
+                                                title="Enriched pathway for Sig18 activity in THYM")+
+  theme(plot.title = element_text(hjust = 0.5))+cowplot::theme_cowplot()
+p
+```
+
+
+## tcga driver mutation
+## load data
+```{r}
+load("../data/driver_mutation.Rdata")
+```
+
+##plot tcga dirver mutation
+```{r}
+p <- ggplot2::ggplot(
+  driver_mutation,
+  ggplot2::aes(
+    x = signature,
+    y = .data$feature
+  )
+) +
+  cowplot::theme_cowplot()  +
+  ggplot2::geom_point(ggplot2::aes_string(
+    color = "measure2",
+    size = "p3"
+  )) +
+  ggpubr::rotate_x_text(0, hjust = 0.5) +
+  labs(color = "Difference\nin means of\nactivity", size = "-log10(p value)") +
+  # scale_size_area(max_size = 6) +
+  scale_size_continuous(
+    limits = c(1.3,4),
+    # breaks = c(5, 20, 50, 100, 200)
+    breaks = c(2, 3, 4),
+    range = c(0,6)
+  )   +
+  ggplot2::theme(axis.text.x = element_text(
+    angle = 90, vjust = 0.5, hjust = 1
+  ))  +
+  scale_colour_manual(values = c(
+    `<-0.25` = "#330FE8",
+    `-0.25~-0.15` = "#4261E2",
+    `-0.15~0` = "light blue",
+    `0~0.25` = "orange",
+    `0.15~0.25` = "red",
+    `> 0.25` = "dark red"
+  ))
+p  
+```
+## Copy Number Signature Landscape
+## load data 
+```{r}
+load("../data/Copy Number Signature Landscape.Rdata")
+```
+
+## Landscape
+```{r}
+p <- ggplot(
+  df_type,
+  aes(x = cancer_type, y = factor(sig, levels = paste0("Sig", 1:20)))
+) +
+  geom_point(aes(size = proportion, color = expo)) +
+  theme_cowplot() +
+  ggpubr::rotate_x_text(60) +
+  scale_x_discrete(breaks = mps$cancer_type, labels = mps$label) +
+  scale_size_continuous(
+    limits = c(0.4, 1),
+    breaks = c(0.4, 0.6, 0.8, 1)
+  ) +
+  scale_color_stepsn(
+    colors = c("blue","orange","red","dark red"),
+    breaks = c(0.1, 0.2, 0.3))+
+  labs(
+    x = NULL, y = "Copy number signatures",
+    color = "Median activity\ndue to signature",
+    size = "Proportion of tumors\nwith the signatures"
+  )
+p
+```
+
+
