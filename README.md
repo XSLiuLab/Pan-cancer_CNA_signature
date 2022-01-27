@@ -1,6 +1,6 @@
 # Pan-Cancer Alteration Signature Analysis Report
 
-Read online analysis report at <https://xsliulab.github.io/Pan-cancer_CNA_signature/>. [Now still private]
+Read online analysis report at <https://xsliulab.github.io/Pan-cancer_CNA_signature/>. 
 
 * tool **sigminer**: https://shixiangwang.github.io/sigminer-doc/
 
